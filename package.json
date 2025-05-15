@@ -1,0 +1,82 @@
+{
+  "name": "topluyo",
+  "version": "2025.5.1519",
+  "description": "Topluyo",
+  "main": "main.js",
+  "scripts": {
+    "start": "set NODE_ENV=production&& electron .",
+    "dev": "set NODE_ENV=development&& electron .",
+    "devbuild": "set NODE_ENV=development&& electron-builder --win --x64 --config.win.target=nsis",
+    "clean": "rm -rf dist",
+    "clear": "if exist dist rmdir /s /q dist",
+    "installer": "electron-builder --win --x64",
+    "build:winexe": "npm run clear && set NODE_ENV=production&& set STOREBUILD=false&& electron-builder --win --x64 --config.win.target=nsis",
+    "build:winstore": "npm run clear && set NODE_ENV=production&& set STOREBUILD=true&& electron-builder --win --x64 --config.win.target=appx",
+    "build:linux": "npm run clean && electron-builder --linux"
+  },
+  "author": "Hasan Delibaş, İsmail Han Duman, Topluyo Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.3.2",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9",
+    "electron-window-state": "^5.0.3"
+  },
+  "build": {
+    "appId": "com.topluyo.app",
+    "productName": "Topluyo",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "build/**/*",
+      "node_modules/**/*",
+      "*.html",
+      "icons/*",
+      "*.rtf",
+      "*.js"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "appx"
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "Topluyo-Setup-${version}.${ext}"
+    },
+    "appx": {
+      "identityName": "Topluyo.Topluyo",
+      "publisher": "CN=B644B811-3CB1-46E2-8448-9423A6C95D4A",
+      "publisherDisplayName": "Topluyo",
+      "languages": "tr-TR",
+      "backgroundColor": "#191819"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Topluyo",
+      "license": "kullanici_sozlesmesi.rtf",
+      "deleteAppDataOnUninstall": true
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "icons/png/256x256.png",
+      "category": "Utility",
+      "description": "Topluyo",
+      "executableName": "Topluyo",
+      "artifactName": "Topluyo-${version}.${ext}",
+      "maintainer": "Hasan Delibaş <info@topluyo.com>"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "topluyo",
+        "repo": "app"
+      }
+    ]
+  }
+}

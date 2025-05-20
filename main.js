@@ -13,8 +13,10 @@ let mainWindow, loadingWindow;
 
 //* App Protocol Handler
 if (process.platform === "win32") {
-  if (!app.isDefaultProtocolClient("topluyo")) {
-    app.setAsDefaultProtocolClient("topluyo");
+  const exePath = process.execPath;
+  const args = [process.argv[1]];
+  if (!app.isDefaultProtocolClient("topluyo", exePath, args)) {
+    app.setAsDefaultProtocolClient("topluyo", exePath, args);
   }
 } else if (process.platform === "linux") {
   const { execSync } = require("child_process");

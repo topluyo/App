@@ -25,8 +25,7 @@ function createMainWindow(windowstate, url) {
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
   });
-  if (windowstate)
-    windowstate.manage(mainWindow);
+  if (windowstate) windowstate.manage(mainWindow);
   if (!url) {
     mainWindow.webContents.once("did-finish-load", () => {
       checkForUpdatesAndLoad(mainWindow);
@@ -47,16 +46,18 @@ function createMainWindow(windowstate, url) {
   });
   mainWindow.on("unresponsive", () => {
     console.error("Ana pencere yanıt vermiyor.");
-    mainWindow.webContents.send("update-message", "❗ Ana pencere yanıt vermiyor.");
+    mainWindow.webContents.send(
+      "update-message",
+      "❗ Ana pencere yanıt vermiyor."
+    );
   });
-  mainWindow.on("closed",()=>{
+  mainWindow.on("closed", () => {
     mainWindow = null;
-  })
+  });
   return mainWindow;
 }
 
 function checkForUpdatesAndLoad(mainWindow) {
-
   autoUpdater.logger = log;
   autoUpdater.logger.transports.file.level = "info";
   autoUpdater.autoDownload = true;
@@ -67,14 +68,20 @@ function checkForUpdatesAndLoad(mainWindow) {
     console.log("Güncellemeler kontrol ediliyor...");
     autoUpdater.logger = log;
     autoUpdater.logger.transports.file.level = "info";
-    mainWindow.webContents.send("update-message", "🔍 Güncellemeler kontrol ediliyor...");
+    mainWindow.webContents.send(
+      "update-message",
+      "🔍 Güncellemeler kontrol ediliyor..."
+    );
   });
 
   autoUpdater.on("update-available", () => {
     console.log("Güncellemeler kontrol ediliyor...");
     autoUpdater.logger = log;
     autoUpdater.logger.transports.file.level = "info";
-    mainWindow.webContents.send("update-message", "✅ Güncelleme bulundu. İndiriliyor...");
+    mainWindow.webContents.send(
+      "update-message",
+      "✅ Güncelleme bulundu. İndiriliyor..."
+    );
   });
 
   autoUpdater.on("download-progress", (progressObj) => {
@@ -89,16 +96,22 @@ function checkForUpdatesAndLoad(mainWindow) {
   autoUpdater.on("update-downloaded", () => {
     autoUpdater.logger = log;
     autoUpdater.logger.transports.file.level = "info";
-    mainWindow.webContents.send("update-message", "🎉 Güncelleme indirildi. Uygulama yeniden başlatılıyor...");
+    mainWindow.webContents.send(
+      "update-message",
+      "🎉 Güncelleme indirildi. Uygulama yeniden başlatılıyor..."
+    );
     setTimeout(() => {
-      autoUpdater.quitAndInstall();
+      autoUpdater.quitAndInstall(true, true);
     }, 2000);
   });
 
   autoUpdater.on("update-not-available", () => {
     autoUpdater.logger = log;
     autoUpdater.logger.transports.file.level = "info";
-    mainWindow.webContents.send("update-message", "🚀 Güncel sürüm kullanılıyor.");
+    mainWindow.webContents.send(
+      "update-message",
+      "🚀 Güncel sürüm kullanılıyor."
+    );
     setTimeout(() => {
       mainWindow.loadURL("https://topluyo.com");
     }, 1000);
@@ -108,7 +121,10 @@ function checkForUpdatesAndLoad(mainWindow) {
     autoUpdater.logger = log;
     autoUpdater.logger.transports.file.level = "info";
     console.error("Güncelleme hatası:", err.message);
-    mainWindow.webContents.send("update-message", `❌ Güncelleme hatası: ${err.message}`);
+    mainWindow.webContents.send(
+      "update-message",
+      `❌ Güncelleme hatası: ${err.message}`
+    );
     setTimeout(() => {
       mainWindow.loadURL("https://topluyo.com");
     }, 2000);

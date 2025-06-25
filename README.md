@@ -17,6 +17,10 @@
 2. **Çalıştır**: İndirilen `Topluyo Setup 2025.2.323.exe` dosyasını açın.
 3. **Yükleme**: Ekrandaki talimatları izleyerek kurulumu tamamlayın.
 
+### Linux için
+
+Kurduktan sonra --no-sandbox flagı ile çalıştırmanız tavsiye edilir
+
 ## Kullanım
 
 - **Giriş Yapın**: Mevcut Topluyo hesabınızla giriş yapın veya yeni bir hesap oluşturun.

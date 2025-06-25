@@ -6,8 +6,12 @@ const { mediaHandler } = require("./utils");
 
 function createMainWindow(windowstate, url) {
   let mainWindow = new BrowserWindow({
-    width: 1024,
-    height: 768,
+    x: windowstate.x,
+    y: windowstate.y,
+    width: windowstate.width,
+    height: windowstate.height,
+    minWidth: 800,
+    minHeight: 600,
     show: false,
     frame: false,
     backgroundColor: "#ffffff",
@@ -62,8 +66,9 @@ function checkForUpdatesAndLoad(mainWindow) {
   autoUpdater.logger.transports.file.level = "info";
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = false;
-  console.log("calisiyor mu");
-
+  if(process.env.NODE_ENV === "development") {
+      mainWindow.loadURL("https://topluyo.com");
+    }
   autoUpdater.on("checking-for-update", () => {
     console.log("Güncellemeler kontrol ediliyor...");
     autoUpdater.logger = log;

@@ -1,11 +1,8 @@
 const { app, BrowserWindow, ipcMain, shell, dialog } = require("electron");
 const windowStateKeeper = require("electron-window-state");
-const {
-  createMainWindow,
-} = require("./Windows");
+const { createMainWindow } = require("./Windows");
 const { isSafeUrl, openExternalLinks } = require("./utils");
 const { URL } = require("url");
-
 
 let mainWindow = null;
 let deeplinkingUrl = null;
@@ -39,10 +36,11 @@ if (!gotLock) {
       if (mainWindow) {
         mainWindow.show();
         mainWindow.focus();
-        mainWindow.loadURL("https://topluyo.com" + url.replace("topluyo://", "/"));
+        mainWindow.loadURL(
+          "https://topluyo.com" + url.replace("topluyo://", "/")
+        );
       }
     }
-
   });
 }
 
@@ -52,14 +50,19 @@ app.whenReady().then(() => {
     defaultWidth: 800,
     defaultHeight: 600,
   });
-  const initialUrlArg = process.argv.find((arg) => arg.startsWith("topluyo://"));
+  const initialUrlArg = process.argv.find((arg) =>
+    arg.startsWith("topluyo://")
+  );
   if (initialUrlArg) {
     deeplinkingUrl = initialUrlArg;
   }
-  mainWindow = createMainWindow(mainWindowState, deeplinkingUrl ? deeplinkingUrl.replace("topluyo://", "/") : null);
-  
+  mainWindow = createMainWindow(
+    mainWindowState,
+    deeplinkingUrl ? deeplinkingUrl.replace("topluyo://", "/") : null
+  );
+
   //* url handler
-  
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (isSafeUrl(url)) {
       mainWindow.loadURL(url.replace("https://topluyo.com/", "/"));
@@ -70,7 +73,7 @@ app.whenReady().then(() => {
     } else if (url.startsWith("javascript:")) {
       return { action: "deny" };
     } else {
-      const parsedUrl = new URL(url)
+      const parsedUrl = new URL(url);
       if (parsedUrl.search && parsedUrl.search.includes("!login")) {
         shell.openExternal(url);
       } else {
@@ -79,11 +82,12 @@ app.whenReady().then(() => {
             type: "warning",
             buttons: ["Evet", "Hayır"],
             defaultId: 1,
+            cancelId: 1,
             title: "Dış Bağlantı Açılıyor",
             message: "Bu bağlantıyı açmak istiyor musunuz?\n" + url,
           })
           .then((response) => {
-            if (response.response !== 1) {
+            if (response.response === 0) {
               openExternalLinks(url);
             }
           });
@@ -91,10 +95,7 @@ app.whenReady().then(() => {
       return { action: "deny" };
     }
   });
-  
 });
-
-
 
 app.on("window-all-closed", function () {
   if (process.platform === "win32") {

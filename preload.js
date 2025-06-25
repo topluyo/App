@@ -25,3 +25,8 @@ contextBridge.exposeInMainWorld("stream", {
   setSource: (data) =>
     ipcRenderer.invoke("setSource", { id:data.id, isAudioEnabled:data.audio }),
 });
+
+contextBridge.exposeInMainWorld("electronAPI", {
+  onUpdateMessage: (callback) => ipcRenderer.on("update-message", callback),
+  onProgress: (callback) => ipcRenderer.on("download-progress", callback),
+});

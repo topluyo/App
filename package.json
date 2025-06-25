@@ -1,6 +1,6 @@
 {
   "name": "topluyo",
-  "version": "2025.5.2100",
+  "version": "2025.6.2519",
   "description": "Topluyo",
   "main": "main.js",
   "scripts": {
@@ -12,17 +12,20 @@
     "installer": "electron-builder --win --x64",
     "build:winexe": "npm run clear && set NODE_ENV=production&& set STOREBUILD=false&& electron-builder --win --x64 --config.win.target=nsis",
     "build:winstore": "npm run clear && set NODE_ENV=production&& set STOREBUILD=true&& electron-builder --win --x64 --config.win.target=appx",
-    "build:linux": "npm run clean && electron-builder --linux"
+    "build:linux": "npm run clean && electron-builder --linux",
+    "rebuild": "electron-rebuild -f -w iohook"
   },
-  "author": "Hasan Delibaş, İsmail Han Duman, Topluyo Team",
+  "author": "Topluyo Team",
   "license": "MIT",
   "devDependencies": {
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8"
   },
   "dependencies": {
+    "electron-log": "^5.4.1",
     "electron-updater": "^6.3.9",
-    "electron-window-state": "^5.0.3"
+    "electron-window-state": "^5.0.3",
+    "uiohook-napi": "^1.5.4"
   },
   "build": {
     "appId": "com.topluyo.app",
@@ -63,7 +66,10 @@
       "deleteAppDataOnUninstall": true
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "icons/png/256x256.png",
       "category": "Utility",
       "description": "Topluyo",
@@ -71,11 +77,12 @@
       "artifactName": "Topluyo-${version}.${ext}",
       "maintainer": "Hasan Delibaş <info@topluyo.com>"
     },
+    "afterPack": "./fixChromeSandbox.js",
     "publish": [
       {
         "provider": "github",
         "owner": "topluyo",
-        "repo": "app"
+        "repo": "App"
       }
     ]
   }

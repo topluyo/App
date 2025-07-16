@@ -64,38 +64,39 @@ app.whenReady().then(() => {
 
   //* url handler
 
-  // mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-  //   if (isSafeUrl(url)) {
-  //     mainWindow.loadURL(url.replace("https://topluyo.com/", "/"));
-  //     return { action: "deny" };
-  //   } else if (url.startsWith("topluyo://")) {
-  //     mainWindow.loadURL(url.replace("https://topluyo.com/", "/"));
-  //     return { action: "deny" };
-  //   } else if (url.startsWith("javascript:")) {
-  //     return { action: "deny" };
-  //   } else {
-  //     const parsedUrl = new URL(url);
-  //     if (parsedUrl.search && parsedUrl.search.includes("!login")) {
-  //       shell.openExternal(url);
-  //     } else {
-  //       dialog
-  //         .showMessageBox({
-  //           type: "warning",
-  //           buttons: ["Evet", "Hayır"],
-  //           defaultId: 1,
-  //           cancelId: 1,
-  //           title: "Dış Bağlantı Açılıyor",
-  //           message: "Bu bağlantıyı açmak istiyor musunuz?\n" + url,
-  //         })
-  //         .then((response) => {
-  //           if (response.response === 0) {
-  //             openExternalLinks(url);
-  //           }
-  //         });
-  //     }
-  //     return { action: "deny" };
-  //   }
-  // });
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openExternalLinks(url);
+    // if (isSafeUrl(url)) {
+    //   mainWindow.loadURL(url.replace("https://topluyo.com/", "/"));
+    //   return { action: "deny" };
+    // } else if (url.startsWith("topluyo://")) {
+    //   mainWindow.loadURL(url.replace("https://topluyo.com/", "/"));
+    //   return { action: "deny" };
+    // } else if (url.startsWith("javascript:")) {
+    //   return { action: "deny" };
+    // } else {
+    //   const parsedUrl = new URL(url);
+    //   if (parsedUrl.search && parsedUrl.search.includes("!login")) {
+    //     shell.openExternal(url);
+    //   } else {
+    //     dialog
+    //       .showMessageBox({
+    //         type: "warning",
+    //         buttons: ["Evet", "Hayır"],
+    //         defaultId: 1,
+    //         cancelId: 1,
+    //         title: "Dış Bağlantı Açılıyor",
+    //         message: "Bu bağlantıyı açmak istiyor musunuz?\n" + url,
+    //       })
+    //       .then((response) => {
+    //         if (response.response === 0) {
+    //           openExternalLinks(url);
+    //         }
+    //       });
+    //   }
+    //   return { action: "deny" };
+    //}
+  });
 });
 
 app.on("window-all-closed", function () {

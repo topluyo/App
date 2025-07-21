@@ -65,7 +65,30 @@ app.whenReady().then(() => {
   //* url handler
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    openExternalLinks(url);
+    console.log(url);
+    const parsedUrl = new URL(url);
+    if (
+      (parsedUrl.hostname === "topluyo.com" ||
+        parsedUrl.hostname === "www.topluyo.com") &&
+      parsedUrl.pathname.startsWith("/!ads")
+    ) {
+      openExternalLinks(url);
+      return { action: "deny" };
+    } else if (
+      (parsedUrl.hostname === "topluyo.com" ||
+        parsedUrl.hostname === "www.topluyo.com") &&
+      parsedUrl.search &&
+      parsedUrl.search.includes("!login")
+    ) {
+      openExternalLinks(url);
+      return { action: "deny" };
+    } else if (url.startsWith("topluyo://")) {
+      mainWindow.loadURL(url.replace("topluyo://", "https://topluyo.com/"));
+      return { action: "deny" };
+    } else {
+      mainWindow.loadURL(url);
+      return { action: "deny" };
+    }
     // if (isSafeUrl(url)) {
     //   mainWindow.loadURL(url.replace("https://topluyo.com/", "/"));
     //   return { action: "deny" };
@@ -98,6 +121,20 @@ app.whenReady().then(() => {
     //}
   });
 });
+
+if(process.platform === "darwin"){
+  app.on("open-url",(event, url) => {
+    event.preventDefault();
+    deeplinkingUrl = url;
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+      mainWindow.loadURL(
+        "https://topluyo.com" + url.replace("topluyo://", "/")
+      );
+    }
+  });
+}
 
 app.on("window-all-closed", function () {
   if (process.platform === "win32") {

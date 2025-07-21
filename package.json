@@ -1,6 +1,6 @@
 {
   "name": "topluyo",
-  "version": "2025.7.1619",
+  "version": "2025.7.2119",
   "description": "Topluyo",
   "main": "main.js",
   "scripts": {
@@ -13,6 +13,7 @@
     "build:winexe": "npm run clear && set NODE_ENV=production&& set STOREBUILD=false&& electron-builder --win --x64 --config.win.target=nsis",
     "build:winstore": "npm run clear && set NODE_ENV=production&& set STOREBUILD=true&& electron-builder --win --x64 --config.win.target=appx",
     "build:linux": "npm run clean && electron-builder --linux",
+    "build:mac": "npm run clean && electron-builder --mac",
     "rebuild": "electron-rebuild -f -w iohook"
   },
   "author": "Topluyo Team",
@@ -41,9 +42,19 @@
       "*.rtf",
       "*.js"
     ],
+    "protocols":[
+      {
+        "name": "Topluyo",
+        "schemes": [
+          "topluyo"
+        ]
+      }
+    ],
     "win": {
       "target": [
         "nsis",
+        "portable",
+        "msi",
         "appx"
       ],
       "icon": "build/icon.ico",
@@ -68,7 +79,8 @@
     "linux": {
       "target": [
         "AppImage",
-        "deb"
+        "snap",
+        "tar.gz"
       ],
       "icon": "icons/png/256x256.png",
       "category": "Utility",
@@ -76,6 +88,23 @@
       "executableName": "Topluyo",
       "artifactName": "Topluyo-${version}.${ext}",
       "maintainer": "Hasan Delibaş <info@topluyo.com>"
+    },
+    "snap":{
+      "confinement": "classic"
+    },
+    "mac":{
+      "target": [
+        "dmg",
+        "pkg",
+        "zip"
+      ],
+      "icon": "icons/mac/icon.icns",
+      "category": "public.app-category.utilities",
+      "artifactName": "Topluyo-${version}.${ext}",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Topluyo uygulaması mikrofon erişimi gerektirir.",
+        "NSCameraUsageDescription": "Topluyo uygulaması kamera erişimi gerektirir."
+      }
     },
     "afterPack": "./fixChromeSandbox.js",
     "publish": [

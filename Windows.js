@@ -135,8 +135,8 @@ function checkForUpdatesAndLoad(mainWindow) {
     }, 2000);
   });
 
-  //autoUpdater.checkForUpdates();
-  mainWindow.loadURL("https://topluyo.com");
+  autoUpdater.checkForUpdates();
+  //mainWindow.loadURL("https://topluyo.com");
 }
 
 exports.createMainWindow = createMainWindow;

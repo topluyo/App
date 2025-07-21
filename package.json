@@ -1,6 +1,6 @@
 {
   "name": "topluyo",
-  "version": "2025.7.2119",
+  "version": "2025.7.2123",
   "description": "Topluyo",
   "main": "main.js",
   "scripts": {
@@ -91,7 +91,8 @@
       "maintainer": "Hasan Delibaş <info@topluyo.com>"
     },
     "snap":{
-      "confinement": "classic"
+      "confinement": "classic",
+      "publish": false
     },
     "mac":{
       "target": [

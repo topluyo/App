@@ -16,10 +16,14 @@ if (process.platform === "linux") {
 }
 
 if (process.platform === "win32") {
-  const exePath = process.execPath;
-  const args = [process.argv[1]];
-  if (!app.isDefaultProtocolClient("topluyo", exePath, args)) {
-    app.setAsDefaultProtocolClient("topluyo", exePath, args);
+  if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient("topluyo", process.execPath, [
+        path.resolve(process.argv[1]),
+      ]);
+    }
+  } else {
+    app.setAsDefaultProtocolClient("topluyo");
   }
 } else if (process.platform === "linux") {
   require("./linuxscript");
@@ -65,30 +69,7 @@ app.whenReady().then(() => {
   //* url handler
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    console.log(url);
-    const parsedUrl = new URL(url);
-    if (
-      (parsedUrl.hostname === "topluyo.com" ||
-        parsedUrl.hostname === "www.topluyo.com") &&
-      parsedUrl.pathname.startsWith("/!ads")
-    ) {
-      openExternalLinks(url);
-      return { action: "deny" };
-    } else if (
-      (parsedUrl.hostname === "topluyo.com" ||
-        parsedUrl.hostname === "www.topluyo.com") &&
-      parsedUrl.search &&
-      parsedUrl.search.includes("!login")
-    ) {
-      openExternalLinks(url);
-      return { action: "deny" };
-    } else if (url.startsWith("topluyo://")) {
-      mainWindow.loadURL(url.replace("topluyo://", "https://topluyo.com/"));
-      return { action: "deny" };
-    } else {
-      mainWindow.loadURL(url);
-      return { action: "deny" };
-    }
+    openExternalLinks(url);
     // if (isSafeUrl(url)) {
     //   mainWindow.loadURL(url.replace("https://topluyo.com/", "/"));
     //   return { action: "deny" };
@@ -122,8 +103,8 @@ app.whenReady().then(() => {
   });
 });
 
-if(process.platform === "darwin"){
-  app.on("open-url",(event, url) => {
+if (process.platform === "darwin") {
+  app.on("open-url", (event, url) => {
     event.preventDefault();
     deeplinkingUrl = url;
     if (mainWindow) {

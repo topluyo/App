@@ -6,13 +6,13 @@ on:
       - 'v*.*.*' # Trigger on version tags like v1.0.0
 
 permissions:
-  contents: write # add permission for organization
+  contents: write
 
 jobs:
   buildExe:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-14]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -22,7 +22,20 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '20' 
+          node-version: '20'
+
+      # --- Yeni adımlar: macos-14 runner için Python + distutils desteği ---
+      - name: Set up Python (macOS için distutils)
+        if: runner.os == 'macOS'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python build deps (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          python3 -m ensurepip --upgrade
+          python3 -m pip install --upgrade pip setuptools
 
       - name: Install dependencies
         run: npm install
@@ -43,9 +56,10 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-            files: dist/*
+          files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
   # buildStore:
   #   runs-on: windows-latest

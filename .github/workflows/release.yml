@@ -24,11 +24,6 @@ jobs:
         with:
           node-version: '20'
 
-      # — Ubuntu runner için snapcraft kurulumu —
-      - name: Install snapcraft (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo snap install snapcraft --classic
-
       # — macOS için distutils desteği —
       - name: Set up Python (macOS için distutils)
         if: matrix.os == 'macos-14'

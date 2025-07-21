@@ -64,7 +64,6 @@ async function createStreamWindow(_, callback) {
   ipcMain.handle("setSource", async (_, data) => {
     console.log("setSource çağrıldı:", data);
     if (callbackcalled) {
-      console.log("setSource: Callback zaten çağrıldı, çıkılıyor");
       return;
     }
     const selectedSource = allSources.find((s) => s.id === data.id);
@@ -74,28 +73,10 @@ async function createStreamWindow(_, callback) {
         throw new Error("Source not found");
       }
       callbackcalled = true;
-      let stream;
-      if (process.platform === "darwin") {
-        stream = {
-          video: {
-            mandatory: {
-              chromeMediaSource: "desktop",
-              chromeMediaSourceId: selectedSource.id,
-              maxWidth: 1920,
-              maxHeight: 1080,
-            },
-          },
-        };
-        if (data.isAudioEnabled) {
-          stream.audio = "loopback";
-        }
-      } else {
-        stream = { video: selectedSource };
-        if (data.isAudioEnabled) {
-          stream.audio = "loopback";
-        }
+      let stream = { video: selectedSource };
+      if (data.isAudioEnabled) {
+        stream.audio = "loopback";
       }
-      console.log("setSource: Stream oluşturuldu:", stream);
       callback(stream);
       ipcMain.removeHandler("getSources");
       ipcMain.removeHandler("setSource");

@@ -17,7 +17,7 @@ function createMainWindow(windowstate, url) {
     backgroundColor: "#ffffff",
     icon: path.join(__dirname, "topluyo.png"),
     webPreferences: {
-      contextIsolation: false,
+      contextIsolation: true,
       nodeIntegration: false,
       preload: path.join(__dirname, "preload.js"),
     },
@@ -135,7 +135,8 @@ function checkForUpdatesAndLoad(mainWindow) {
     }, 2000);
   });
 
-  autoUpdater.checkForUpdates();
+  //autoUpdater.checkForUpdates();
+  mainWindow.loadURL("https://topluyo.com");
 }
 
 exports.createMainWindow = createMainWindow;

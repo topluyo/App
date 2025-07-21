@@ -4,8 +4,10 @@
   "description": "Topluyo",
   "main": "main.js",
   "scripts": {
-    "start": "set NODE_ENV=production&& electron .",
-    "dev": "set NODE_ENV=development&& electron .",
+    "start": "NODE_ENV=production electron .",
+    "dev": "NODE_ENV=development electron .",
+    "start:win": "set NODE_ENV=production&& electron .",
+    "dev:win": "set NODE_ENV=development&& electron .",
     "devbuild": "set NODE_ENV=development&& electron-builder --win --x64 --config.win.target=nsis",
     "clean": "rm -rf dist",
     "clear": "if exist dist rmdir /s /q dist",
@@ -101,9 +103,15 @@
       "icon": "icons/mac/icon.icns",
       "category": "public.app-category.utilities",
       "artifactName": "Topluyo-${version}.${ext}",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Topluyo uygulaması mikrofon erişimi gerektirir.",
-        "NSCameraUsageDescription": "Topluyo uygulaması kamera erişimi gerektirir."
+        "NSCameraUsageDescription": "Topluyo uygulaması kamera erişimi gerektirir.",
+        "NSScreenRecordingUsageDescription":"Topluyo uygulaması ekran paylaşımı ve ekran kaydı için ekran erişimi gerektirir.",
+        "NSScreenCaptureDescription":"Topluyo uygulaması ekran paylaşımı için ekran erişimi gerektirir."
       }
     },
     "afterPack": "./fixChromeSandbox.js",

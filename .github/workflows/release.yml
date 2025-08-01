@@ -1,6 +1,7 @@
 name: Build and Release Electron App
 
 on:
+  workflow_dispatch: # Manual trigger
   push:
     tags:
       - 'v*.*.*' # Trigger on version tags like v1.0.0
@@ -24,7 +25,6 @@ jobs:
         with:
           node-version: '20'
 
-      # — macOS için distutils desteği —
       - name: Set up Python (macOS için distutils)
         if: matrix.os == 'macos-14'
         uses: actions/setup-python@v5
@@ -52,6 +52,18 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ✅ Windows için eSigner ile imzala
+      - name: Sign EXE with SSL.com eSigner
+        if: matrix.os == 'windows-latest'
+        uses: sslcom/esigner-codesign@develop
+        with:
+          username: ${{ secrets.ESIGNER_USERNAME }}
+          password: ${{ secrets.ESIGNER_PASSWORD }}
+          totp_secret: ${{ secrets.ESIGNER_TOTP }}
+          file_path: |
+            dist/*.exe
+            dist/*.appx
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1

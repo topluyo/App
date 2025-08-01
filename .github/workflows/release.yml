@@ -52,6 +52,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # ✅ Package.json'dan version bilgisini al
+      - name: Get version from package.json
+        if: matrix.os == 'windows-latest'
+        id: package-version
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+          echo "Version: $version"
+        shell: powershell
+
       # ✅ Dosyaların varlığını kontrol et
       - name: List dist files (Windows)
         if: matrix.os == 'windows-latest'
@@ -65,8 +75,8 @@ jobs:
           }
         shell: powershell
 
-      # ✅ Windows için eSigner ile imzala
-      - name: Sign EXE with SSL.com eSigner
+      # ✅ Windows için eSigner ile imzala - NSIS Installer
+      - name: Sign NSIS Installer
         if: matrix.os == 'windows-latest'
         uses: sslcom/esigner-codesign@develop
         with:
@@ -76,11 +86,36 @@ jobs:
           totp_secret: ${{ secrets.ESIGNER_TOTP }}
           malware_block: false
           override: true
-          clean_logs: true
-          file_path: |
-            dist/Topluyo-Setup-*.exe
-            dist/Topluyo*.exe
-            dist/*.appx
+          clean_logs: false
+          file_path: dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe
+
+      # ✅ Windows için eSigner ile imzala - Main EXE
+      - name: Sign Main Executable
+        if: matrix.os == 'windows-latest'
+        uses: sslcom/esigner-codesign@develop
+        with:
+          username: ${{ secrets.ESIGNER_USERNAME }}
+          password: ${{ secrets.ESIGNER_PASSWORD }}
+          credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
+          totp_secret: ${{ secrets.ESIGNER_TOTP }}
+          malware_block: false
+          override: true
+          clean_logs: false
+          file_path: dist/win-unpacked/Topluyo.exe
+
+      # ✅ Windows için eSigner ile imzala - APPX Package
+      - name: Sign APPX Package
+        if: matrix.os == 'windows-latest'
+        uses: sslcom/esigner-codesign@develop
+        with:
+          username: ${{ secrets.ESIGNER_USERNAME }}
+          password: ${{ secrets.ESIGNER_PASSWORD }}
+          credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
+          totp_secret: ${{ secrets.ESIGNER_TOTP }}
+          malware_block: false
+          override: true
+          clean_logs: false
+          file_path: dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.appx
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1

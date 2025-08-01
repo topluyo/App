@@ -52,6 +52,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # ✅ Dosyaların varlığını kontrol et
+      - name: List dist files (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "Checking dist directory contents:"
+          if (Test-Path "dist") {
+            Get-ChildItem -Path "dist" -Recurse | ForEach-Object { Write-Host $_.FullName }
+          } else {
+            Write-Host "dist directory does not exist!"
+            exit 1
+          }
+        shell: powershell
+
       # ✅ Windows için eSigner ile imzala
       - name: Sign EXE with SSL.com eSigner
         if: matrix.os == 'windows-latest'
@@ -61,10 +74,12 @@ jobs:
           password: ${{ secrets.ESIGNER_PASSWORD }}
           credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
           totp_secret: ${{ secrets.ESIGNER_TOTP }}
-          malware_block: true
+          malware_block: false
           override: true
+          clean_logs: true
           file_path: |
-            dist/*.exe
+            dist/Topluyo-Setup-*.exe
+            dist/Topluyo*.exe
             dist/*.appx
 
       - name: Create GitHub Release

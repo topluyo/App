@@ -1,7 +1,6 @@
 name: Build and Release Electron App
 
 on:
-  workflow_dispatch: # Manual trigger
   push:
     tags:
       - 'v*.*.*' # Trigger on version tags like v1.0.0
@@ -68,12 +67,12 @@ jobs:
             dist/*.exe
             dist/*.appx
 
-      # - name: Create GitHub Release
-      #   uses: softprops/action-gh-release@v1
-      #   with:
-      #     files: dist/*
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
   # buildStore:

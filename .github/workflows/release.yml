@@ -60,7 +60,10 @@ jobs:
         with:
           username: ${{ secrets.ESIGNER_USERNAME }}
           password: ${{ secrets.ESIGNER_PASSWORD }}
+          credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
           totp_secret: ${{ secrets.ESIGNER_TOTP }}
+          malware_block: true
+          override: true
           file_path: |
             dist/*.exe
             dist/*.appx

@@ -105,6 +105,21 @@ jobs:
           override: true
           clean_logs: false
 
+      # ✅ İmzalanmış portable uygulamayı ZIP olarak paketleyin
+      - name: Create Portable ZIP Package
+        if: matrix.os == 'windows-latest'
+        run: |
+          $version = "${{ steps.package-version.outputs.version }}"
+          $zipName = "Topluyo-Setup-$version-portable.zip"
+          echo "Creating portable ZIP package: $zipName"
+          Compress-Archive -Path "dist/win-unpacked/*" -DestinationPath "dist/$zipName" -CompressionLevel Optimal
+          echo "ZIP package created successfully"
+          if (Test-Path "dist/$zipName") {
+            $size = (Get-Item "dist/$zipName").Length
+            echo "ZIP file size: $([math]::Round($size/1MB, 2)) MB"
+          }
+        shell: powershell
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:

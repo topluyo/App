@@ -14,23 +14,15 @@
       height: 100vh;
       margin: 0;
       font-family: "Arial", sans-serif;
-      background: url("./icons/loadingBackgroundImg.gif") no-repeat center center fixed;
+      background: #DE11BA;
       background-size: cover;
       -webkit-app-region: drag;
       position: relative;
+      font-family: system-ui;
+      font-weight: 300;
+      overflow: hidden;
     }
 
-    /* Arka plana hafif karartma efekti */
-    body::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 0;
-    }
 
     .loading {
       font-size: 2rem;
@@ -57,8 +49,10 @@
     #progress {
       height: 5px;
       width: 80%;
-      background: #eee;
+      background: #fff;
       position: relative;
+      border-radius: 4px;
+      overflow: hidden;
     }
 
     #bar {
@@ -69,17 +63,15 @@
 
     #msg {
       margin: 20px;
-            font-size: 2rem;
-      font-weight: bold;
+      font-size: 2rem;
+      font-weight: 400;
       color: #ffffff;
-      text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.3);
     }
 
     @keyframes spin {
       0% {
         transform: rotate(0deg);
       }
-
       100% {
         transform: rotate(360deg);
       }
@@ -88,6 +80,7 @@
 </head>
 
 <body>
+
   <div class="loading"></div>
   <div id="msg">Başlatılıyor...</div>
   <div id="progress">
@@ -101,6 +94,67 @@
     ipcRenderer.on("download-progress", (event, data) => {
       document.getElementById("bar").style.width = `${data.percent.toFixed(1)}%`;
     });
+  </script>
+
+
+
+  <style>
+    
+    .eye {
+      stroke-dasharray: 68;
+      stroke-dashoffset: 68;
+      animation: grow-eye-forward .5s ease-in-out forwards; /* Gözlerin açılma ve kapanma animasyonu */
+    }
+
+    @keyframes grow-eye-forward {
+      0% { stroke-dasharray: 68; }
+      100% { stroke-dasharray: 136; }
+    }
+
+    .mounth {
+      stroke-dasharray: 211;
+      stroke-dashoffset: 209;
+      animation: grow-mounth 2s ease-in-out infinite; /* Gözlerin açılma ve kapanma animasyonu */
+      animation: grow-mounth-forward .5s ease-in-out forwards;
+    }
+
+    @keyframes grow-mounth-forward{
+      0% { stroke-dasharray: 211; }
+      100% { stroke-dasharray: 424;}
+    }
+
+    svg {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%); /* Ortaya yerleştir */
+      z-index: 4;
+      opacity: 1;
+      width: 512px;
+      height: 512px;
+      transition: all .2s ease-in-out; /* SVG'nin görünürlüğünü yumuşak bir şekilde değiştir */
+    }
+
+  </style>
+  <svg id="kanka" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width: 100%;height:100%;background:#DE11BA;">
+    <rect stroke-width="0" rx="64" id="svg_13" height="512" width="512" y="0" x="0" stroke="#FFF" fill="#DE11BA"></rect>
+
+    <path id="left-eye-up"   class="eye" d="m210,178 l 0,-68" stroke-width="18" stroke-linecap="round" stroke="#FFF" fill="transparent"></path>
+    <path id="left-eye-down" class="eye" d="m210,178 l 0,68" stroke-width="18" stroke-linecap="round" stroke="#FFF" fill="transparent"></path>
+    <path id="right-eye-up"   class="eye" d="m302,178 l 0,-68" stroke-width="18" stroke-linecap="round" stroke="#FFF" fill="transparent"></path>
+    <path id="right-eye-down" class="eye" d="m302,178 l 0,68" stroke-width="18" stroke-linecap="round" stroke="#FFF" fill="transparent"></path>
+
+    <path class="mounth" id="mounth-right" d="M 255.29 411.9245 C 276.773 411.9245 293.4386 406.6049 299.8556 404.2055 C 349.7594 385.5125 384.6065 334.6415 388.6427 274.61" stroke-width="18" stroke-linecap="round" stroke="#FFF" fill="transparent"></path>
+    <path class="mounth" id="mounth-left" d="M256.6106 411.9245C235.1276 411.9245 218.462 406.6049 212.045 404.2055 162.1412 385.5125 127.2941 334.6415 123.2579 274.61" stroke-width="18" stroke-linecap="round" stroke="#FFF" fill="transparent"></path>
+  </svg>
+  <script>
+    setTimeout(()=>{
+      document.getElementById("kanka").style.opacity = "0";
+      document.getElementById("kanka").style.transform = " translate(-50%, -50%) scale(2)";
+      setTimeout(() => {
+        document.getElementById("kanka").style.display = "none";
+      }, 1000);
+    }, 2000); // 3 saniye sonra göz animasyonunu başlat
   </script>
 </body>
 

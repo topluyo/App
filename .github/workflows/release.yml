@@ -80,42 +80,45 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: sslcom/esigner-codesign@develop
         with:
+          command: sign
           username: ${{ secrets.ESIGNER_USERNAME }}
           password: ${{ secrets.ESIGNER_PASSWORD }}
           credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
           totp_secret: ${{ secrets.ESIGNER_TOTP }}
+          file_path: dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe
           malware_block: false
           override: true
           clean_logs: false
-          file_path: dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe
 
       # ✅ Windows için eSigner ile imzala - Main EXE
       - name: Sign Main Executable
         if: matrix.os == 'windows-latest'
         uses: sslcom/esigner-codesign@develop
         with:
+          command: sign
           username: ${{ secrets.ESIGNER_USERNAME }}
           password: ${{ secrets.ESIGNER_PASSWORD }}
           credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
           totp_secret: ${{ secrets.ESIGNER_TOTP }}
+          file_path: dist/win-unpacked/Topluyo.exe
           malware_block: false
           override: true
           clean_logs: false
-          file_path: dist/win-unpacked/Topluyo.exe
 
       # ✅ Windows için eSigner ile imzala - APPX Package
       - name: Sign APPX Package
         if: matrix.os == 'windows-latest'
         uses: sslcom/esigner-codesign@develop
         with:
+          command: sign
           username: ${{ secrets.ESIGNER_USERNAME }}
           password: ${{ secrets.ESIGNER_PASSWORD }}
           credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
           totp_secret: ${{ secrets.ESIGNER_TOTP }}
+          file_path: dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.appx
           malware_block: false
           override: true
           clean_logs: false
-          file_path: dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.appx
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1

@@ -4,36 +4,80 @@ const fs = require('fs');
 
 // CodeSignTool yolunu bul
 function findCodeSignTool() {
+  console.log('🔍 Searching for CodeSignTool.bat...');
+  
   const possiblePaths = [
     './CodeSignTool.bat',
     './CodeSignTool/CodeSignTool.bat',
-    './CodeSignTool-**/CodeSignTool.bat'
+    './CodeSignTool-v1.3.0/CodeSignTool.bat',
+    process.cwd() + '/CodeSignTool.bat',
+    process.cwd() + '/CodeSignTool/CodeSignTool.bat'
   ];
   
   for (const possiblePath of possiblePaths) {
     if (fs.existsSync(possiblePath)) {
-      console.log(`CodeSignTool found at: ${possiblePath}`);
+      console.log(`✅ CodeSignTool found at: ${possiblePath}`);
       return path.resolve(possiblePath);
     }
   }
   
   // Recursive search
   try {
+    console.log('🔍 Performing recursive search...');
+    const result = execSync('dir /s /b CodeSignTool.bat', { encoding: 'utf8', cwd: process.cwd() });
+    const foundPath = result.trim().split('\n')[0];
+    if (foundPath && fs.existsSync(foundPath)) {
+      console.log(`✅ CodeSignTool found via recursive search: ${foundPath}`);
+      return foundPath;
+    }
+  } catch (error) {
+    console.log('❌ Recursive search failed:', error.message);
+  }
+  
+  // PowerShell search as fallback
+  try {
+    console.log('🔍 Trying PowerShell search...');
     const result = execSync('powershell "Get-ChildItem -Recurse -Name CodeSignTool.bat"', { encoding: 'utf8' });
     const foundPath = result.trim().split('\n')[0];
     if (foundPath) {
-      console.log(`CodeSignTool found at: ${foundPath}`);
-      return path.resolve(foundPath);
+      const fullPath = path.resolve(foundPath);
+      if (fs.existsSync(fullPath)) {
+        console.log(`✅ CodeSignTool found via PowerShell: ${fullPath}`);
+        return fullPath;
+      }
     }
   } catch (error) {
-    console.error('CodeSignTool.bat not found');
+    console.log('❌ PowerShell search failed:', error.message);
   }
   
-  throw new Error('CodeSignTool.bat not found');
+  throw new Error('❌ CodeSignTool.bat not found in any location');
 }
 
+// Electron-builder imzalama fonksiyonu (ana export)
+module.exports = async function(configuration) {
+  console.log('🔐 Electron-builder signing function called');
+  console.log('📁 Configuration:', configuration);
+  
+  const filePath = configuration.path;
+  
+  if (!filePath || !fs.existsSync(filePath)) {
+    console.error(`❌ File not found: ${filePath}`);
+    return;
+  }
+  
+  try {
+    await signFile(filePath);
+    console.log(`✅ Successfully signed: ${filePath}`);
+  } catch (error) {
+    console.error(`❌ Failed to sign ${filePath}:`, error.message);
+    throw error;
+  }
+};
+
 // Dosyayı imzala
-function signFile(filePath) {
+async function signFile(filePath) {
+  console.log(`🔐 Starting signature process for: ${filePath}`);
+  
   const codeSignTool = findCodeSignTool();
   
   const username = process.env.ESIGNER_USERNAME;
@@ -42,11 +86,16 @@ function signFile(filePath) {
   const totpSecret = process.env.ESIGNER_TOTP;
   
   if (!username || !password || !credentialId || !totpSecret) {
-    throw new Error('Missing signing credentials in environment variables');
+    const missingVars = [];
+    if (!username) missingVars.push('ESIGNER_USERNAME');
+    if (!password) missingVars.push('ESIGNER_PASSWORD');
+    if (!credentialId) missingVars.push('ESIGNER_CREDENTIAL_ID');
+    if (!totpSecret) missingVars.push('ESIGNER_TOTP');
+    throw new Error(`❌ Missing signing credentials: ${missingVars.join(', ')}`);
   }
   
   if (!fs.existsSync(filePath)) {
-    throw new Error(`File not found: ${filePath}`);
+    throw new Error(`❌ File not found: ${filePath}`);
   }
   
   const command = `"${codeSignTool}" sign ` +
@@ -60,33 +109,37 @@ function signFile(filePath) {
     `-timestamp_server https://timestamp.digicert.com ` +
     `-hash_alg SHA256`;
   
-  console.log(`Signing file: ${filePath}`);
-  console.log(`Command: ${command.replace(/-password "[^"]*"/, '-password "***"').replace(/-totp_secret "[^"]*"/, '-totp_secret "***"')}`);
+  const safeCommand = command.replace(/-password "[^"]*"/, '-password "***"').replace(/-totp_secret "[^"]*"/, '-totp_secret "***"');
+  console.log(`🔧 Command: ${safeCommand}`);
   
-  try {
-    const result = execSync(command, { 
-      encoding: 'utf8',
-      stdio: 'inherit',
-      timeout: 120000 // 2 dakika timeout
-    });
-    console.log(`Successfully signed: ${filePath}`);
-    return true;
-  } catch (error) {
-    console.error(`Failed to sign ${filePath}:`, error.message);
-    throw error;
-  }
+  return new Promise((resolve, reject) => {
+    try {
+      console.log(`⏳ Executing signing command...`);
+      const result = execSync(command, { 
+        encoding: 'utf8',
+        stdio: 'inherit',
+        timeout: 120000 // 2 dakika timeout
+      });
+      console.log(`✅ Successfully signed: ${filePath}`);
+      resolve(true);
+    } catch (error) {
+      console.error(`❌ Failed to sign ${filePath}:`, error.message);
+      reject(error);
+    }
+  });
 }
 
-// Ana fonksiyon
-function signElectronFiles() {
+// Ana fonksiyon (standalone kullanım için)
+async function signElectronFiles() {
   console.log('Starting code signing process...');
   
+  const glob = require('glob');
   const filesToSign = [
     'dist/win-unpacked/Topluyo.exe',
     // NSIS installer - dinamik versiyon ile
-    ...require('glob').sync('dist/Topluyo-Setup-*.exe'),
+    ...glob.sync('dist/Topluyo-Setup-*.exe'),
     // APPX package - dinamik versiyon ile
-    ...require('glob').sync('dist/Topluyo-Setup-*.appx')
+    ...glob.sync('dist/Topluyo-Setup-*.appx')
   ];
   
   const existingFiles = filesToSign.filter(file => fs.existsSync(file));
@@ -101,7 +154,7 @@ function signElectronFiles() {
   
   for (const file of existingFiles) {
     try {
-      signFile(file);
+      await signFile(file);
     } catch (error) {
       console.error(`Failed to sign ${file}:`, error.message);
       // Continue with other files
@@ -113,7 +166,9 @@ function signElectronFiles() {
 
 // Script olarak çalıştırılıyorsa
 if (require.main === module) {
-  signElectronFiles();
+  signElectronFiles().catch(console.error);
 }
 
-module.exports = { signFile, signElectronFiles };
+// Ek fonksiyonları export et
+module.exports.signFile = signFile;
+module.exports.signElectronFiles = signElectronFiles;

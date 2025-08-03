@@ -28,6 +28,7 @@
     "electron-log": "^5.4.1",
     "electron-updater": "^6.3.9",
     "electron-window-state": "^5.0.3",
+    "glob": "^10.3.10",
     "uiohook-napi": "^1.5.4"
   },
   "build": {
@@ -60,10 +61,8 @@
       ],
       "icon": "build/icon.ico",
       "artifactName": "Topluyo-Setup-${version}.${ext}",
-      "sign":"./sign.js",
-      "signingHashAlgorithms": [
-        "sha256"
-      ]
+      "sign": "./sign.js",
+      "signDlls": false
     },
     "appx": {
       "identityName": "Topluyo.Topluyo",

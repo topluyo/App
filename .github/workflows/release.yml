@@ -1,6 +1,7 @@
 name: Build and Release Electron App
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*.*.*' # Trigger on version tags like v1.0.0
@@ -74,36 +75,60 @@ jobs:
             exit 1
           }
         shell: powershell
+        
+      - name: Set up Java
+        if: matrix.os == 'windows-latest'
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # ─── Direct CLI ile CodeSignTool kullanarak imzalama ───
+
+      # 1. Java’yı hazırla (CodeSignTool bir JAR olarak çalışıyor)
+      - name: Set up Java
+        if: matrix.os == 'windows-latest'
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+    # 2. CodeSignTool JAR’ını indir
+      - name: Download CodeSignTool CLI
+        if: matrix.os == 'windows-latest'
+        run: |
+          curl -L https://github.com/SSLcom/CodeSignTool/releases/download/v1.3.2/CodeSignTool-v1.3.2-jar-with-dependencies.jar \
+            -o CodeSignTool.jar
 
       # ✅ Windows için eSigner ile imzala - NSIS Installer
-      - name: Sign NSIS Installer
+      - name: Sign NSIS Installer with CodeSignTool
         if: matrix.os == 'windows-latest'
-        uses: sslcom/esigner-codesign@develop
-        with:
-          command: sign
-          username: ${{ secrets.ESIGNER_USERNAME }}
-          password: ${{ secrets.ESIGNER_PASSWORD }}
-          credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
-          totp_secret: ${{ secrets.ESIGNER_TOTP }}
-          file_path: dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe
-          malware_block: false
-          override: true
-          clean_logs: false
+        run: |
+          java -jar CodeSignTool.jar sign \
+            -username "${{ secrets.ESIGNER_USERNAME }}" \
+            -password "${{ secrets.ESIGNER_PASSWORD }}" \
+            -credential_id "${{ secrets.ESIGNER_CREDENTIAL_ID }}" \
+            -totp_secret "${{ secrets.ESIGNER_TOTP }}" \
+            -input_file_path "dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe" \
+            -output_dir_path "dist" \
+            -override true \
+            -timestamp_server https://timestamp.digicert.com \
+            -hash_alg SHA256
 
       # ✅ Windows için eSigner ile imzala - Main EXE
-      - name: Sign Main Executable
+      - name: Sign Main Executable with CodeSignTool
         if: matrix.os == 'windows-latest'
-        uses: sslcom/esigner-codesign@develop
-        with:
-          command: sign
-          username: ${{ secrets.ESIGNER_USERNAME }}
-          password: ${{ secrets.ESIGNER_PASSWORD }}
-          credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
-          totp_secret: ${{ secrets.ESIGNER_TOTP }}
-          file_path: dist/win-unpacked/Topluyo.exe
-          malware_block: false
-          override: true
-          clean_logs: false
+        run: |
+          java -jar CodeSignTool.jar sign \
+            -username "${{ secrets.ESIGNER_USERNAME }}" \
+            -password "${{ secrets.ESIGNER_PASSWORD }}" \
+            -credential_id "${{ secrets.ESIGNER_CREDENTIAL_ID }}" \
+            -totp_secret "${{ secrets.ESIGNER_TOTP }}" \
+            -input_file_path "dist/win-unpacked/Topluyo.exe" \
+            -output_dir_path "dist/win-unpacked" \
+            -override true \
+            -timestamp_server https://timestamp.digicert.com \
+            -hash_alg SHA256
 
       # ✅ İmzalanmış portable uygulamayı ZIP olarak paketleyin
       - name: Create Portable ZIP Package

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - 'v*.*.*' # Trigger on version tags like v1.0.0
+      - '*.*' # Trigger on version tags like v1.0.0
 
 permissions:
   contents: write
@@ -40,6 +40,18 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # ✅ CodeSignTool'u indir ve hazırla (Windows için) - BUILD ÖNCESINDE
+      - name: Download and Setup CodeSignTool
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "Downloading CodeSignTool..."
+          Invoke-WebRequest -Uri "https://www.ssl.com/download/codesigntool-for-windows/" -OutFile "CodeSignTool.zip"
+          echo "Extracting CodeSignTool..."
+          Expand-Archive -Path "CodeSignTool.zip" -DestinationPath "." -Force
+          echo "CodeSignTool setup completed"
+          Get-ChildItem -Recurse | Where-Object { $_.Name -like "*CodeSign*" } | ForEach-Object { Write-Host $_.FullName }
+        shell: powershell
+
       - name: Build Electron App
         shell: bash
         run: |
@@ -57,7 +69,7 @@ jobs:
           ESIGNER_CREDENTIAL_ID: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
           ESIGNER_TOTP: ${{ secrets.ESIGNER_TOTP }}
 
-      # ✅ Package.json'dan version bilgisini al
+      # ✅ Package.json'dan version bilgisini al (Windows için)
       - name: Get version from package.json
         if: matrix.os == 'windows-latest'
         id: package-version
@@ -66,82 +78,6 @@ jobs:
           echo "version=$version" >> $env:GITHUB_OUTPUT
           echo "Version: $version"
         shell: powershell
-
-      # ✅ Dosyaların varlığını kontrol et
-      - name: List dist files (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          echo "Checking dist directory contents:"
-          if (Test-Path "dist") {
-            Get-ChildItem -Path "dist" -Recurse | ForEach-Object { Write-Host $_.FullName }
-          } else {
-            Write-Host "dist directory does not exist!"
-            exit 1
-          }
-        shell: powershell
-        
-      # ✅ CodeSignTool'u indir ve hazırla (Windows için)
-      - name: Download and Setup CodeSignTool
-        if: matrix.os == 'windows-latest'
-        run: |
-          echo "Downloading CodeSignTool..."
-          Invoke-WebRequest -Uri "https://www.ssl.com/download/codesigntool-for-windows/" -OutFile "CodeSignTool.zip"
-          echo "Extracting CodeSignTool..."
-          Expand-Archive -Path "CodeSignTool.zip" -DestinationPath "." -Force
-          echo "CodeSignTool setup completed"
-          Get-ChildItem -Recurse | Where-Object { $_.Name -like "*CodeSign*" } | ForEach-Object { Write-Host $_.FullName }
-        shell: powershell
-
-      # ✅ Build Electron App with signing (Windows)
-      - name: Build Electron App with Signing
-        if: matrix.os == 'windows-latest'
-        run: npm run build:winexe
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ESIGNER_USERNAME: ${{ secrets.ESIGNER_USERNAME }}
-          ESIGNER_PASSWORD: ${{ secrets.ESIGNER_PASSWORD }}
-          ESIGNER_CREDENTIAL_ID: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
-          ESIGNER_TOTP: ${{ secrets.ESIGNER_TOTP }}
-
-      # ─── Direct CLI ile CodeSignTool kullanarak imzalama ───
-
-      # 1. Java’yı hazırla (CodeSignTool bir JAR olarak çalışıyor)
-      - name: Set up Java
-        if: matrix.os == 'windows-latest'
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
-      # ✅ Windows için eSigner ile imzala - NSIS Installer
-      - name: Sign NSIS Installer with CodeSignTool
-        if: matrix.os == 'windows-latest'
-        run: |
-          java -jar CodeSignTool.jar sign \
-            -username "${{ secrets.ESIGNER_USERNAME }}" \
-            -password "${{ secrets.ESIGNER_PASSWORD }}" \
-            -credential_id "${{ secrets.ESIGNER_CREDENTIAL_ID }}" \
-            -totp_secret "${{ secrets.ESIGNER_TOTP }}" \
-            -input_file_path "dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe" \
-            -output_dir_path "dist" \
-            -override true \
-            -timestamp_server https://timestamp.digicert.com \
-            -hash_alg SHA256
-
-      # ✅ Windows için eSigner ile imzala - Main EXE
-      - name: Sign Main Executable with CodeSignTool
-        if: matrix.os == 'windows-latest'
-        run: |
-          java -jar CodeSignTool.jar sign \
-            -username "${{ secrets.ESIGNER_USERNAME }}" \
-            -password "${{ secrets.ESIGNER_PASSWORD }}" \
-            -credential_id "${{ secrets.ESIGNER_CREDENTIAL_ID }}" \
-            -totp_secret "${{ secrets.ESIGNER_TOTP }}" \
-            -input_file_path "dist/win-unpacked/Topluyo.exe" \
-            -output_dir_path "dist/win-unpacked" \
-            -override true \
-            -timestamp_server https://timestamp.digicert.com \
-            -hash_alg SHA256
 
       # ✅ İmzalanmış portable uygulamayı ZIP olarak paketleyin
       - name: Create Portable ZIP Package
@@ -164,32 +100,3 @@ jobs:
           files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
-  # buildStore:
-  #   runs-on: windows-latest
-
-  #   steps:
-  #     - name: Check out code
-  #       uses: actions/checkout@v2
-      
-  #     - name: Set up Node.js
-  #       uses: actions/setup-node@v2
-  #       with:
-  #         node-version: '20'
-
-  #     - name: Install dependencies
-  #       run: npm install
-
-  #     - name: Build Electron App
-  #       run: npm run build:winstore
-  #       env:
-  #         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  #     - name: Upload Microsoft Release
-  #       uses: windows-store-publish@v1
-  #       with:
-  #         package-path: 'dist/*.appx'
-  #         appId: ${{ secrets.WINDOWS_STORE_APP_ID }}
-  #         publisherId: ${{ secrets.WINDOWS_STORE_PUBLISHER_ID }}
-  #         skipSigning: true 

@@ -96,8 +96,10 @@ jobs:
     # 2. CodeSignTool JAR’ını indir
       - name: Download CodeSignTool CLI
         if: matrix.os == 'windows-latest'
+        shell: pwsh
         run: |
-          curl -L https://github.com/SSLcom/CodeSignTool/releases/download/v1.3.2/CodeSignTool-v1.3.2-jar-with-dependencies.jar \
+          curl.exe -L `
+            https://github.com/SSLcom/CodeSignTool/releases/download/v1.3.2/CodeSignTool-v1.3.2-jar-with-dependencies.jar `
             -o CodeSignTool.jar
 
       # ✅ Windows için eSigner ile imzala - NSIS Installer

@@ -59,7 +59,11 @@
         "appx"
       ],
       "icon": "build/icon.ico",
-      "artifactName": "Topluyo-Setup-${version}.${ext}"
+      "artifactName": "Topluyo-Setup-${version}.${ext}",
+      "sign":"./sign.js",
+      "signingHashAlgorithms": [
+        "sha256"
+      ]
     },
     "appx": {
       "identityName": "Topluyo.Topluyo",
@@ -75,7 +79,8 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Topluyo",
       "license": "kullanici_sozlesmesi.rtf",
-      "deleteAppDataOnUninstall": true
+      "deleteAppDataOnUninstall": true,
+      "perMachine": true
     },
     "linux": {
       "target": [

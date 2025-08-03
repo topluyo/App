@@ -52,6 +52,10 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ESIGNER_USERNAME: ${{ secrets.ESIGNER_USERNAME }}
+          ESIGNER_PASSWORD: ${{ secrets.ESIGNER_PASSWORD }}
+          ESIGNER_CREDENTIAL_ID: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
+          ESIGNER_TOTP: ${{ secrets.ESIGNER_TOTP }}
 
       # ✅ Package.json'dan version bilgisini al
       - name: Get version from package.json
@@ -76,12 +80,28 @@ jobs:
           }
         shell: powershell
         
-      - name: Set up Java
+      # ✅ CodeSignTool'u indir ve hazırla (Windows için)
+      - name: Download and Setup CodeSignTool
         if: matrix.os == 'windows-latest'
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'zulu'
-          java-version: '17'
+        run: |
+          echo "Downloading CodeSignTool..."
+          Invoke-WebRequest -Uri "https://www.ssl.com/download/codesigntool-for-windows/" -OutFile "CodeSignTool.zip"
+          echo "Extracting CodeSignTool..."
+          Expand-Archive -Path "CodeSignTool.zip" -DestinationPath "." -Force
+          echo "CodeSignTool setup completed"
+          Get-ChildItem -Recurse | Where-Object { $_.Name -like "*CodeSign*" } | ForEach-Object { Write-Host $_.FullName }
+        shell: powershell
+
+      # ✅ Build Electron App with signing (Windows)
+      - name: Build Electron App with Signing
+        if: matrix.os == 'windows-latest'
+        run: npm run build:winexe
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ESIGNER_USERNAME: ${{ secrets.ESIGNER_USERNAME }}
+          ESIGNER_PASSWORD: ${{ secrets.ESIGNER_PASSWORD }}
+          ESIGNER_CREDENTIAL_ID: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
+          ESIGNER_TOTP: ${{ secrets.ESIGNER_TOTP }}
 
       # ─── Direct CLI ile CodeSignTool kullanarak imzalama ───
 
@@ -92,15 +112,6 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '17'
-
-    # 2. CodeSignTool JAR’ını indir
-      - name: Download CodeSignTool CLI
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          curl.exe -L `
-            https://github.com/SSLcom/CodeSignTool/releases/download/v1.3.2/CodeSignTool-v1.3.2-jar-with-dependencies.jar `
-            -o CodeSignTool.jar
 
       # ✅ Windows için eSigner ile imzala - NSIS Installer
       - name: Sign NSIS Installer with CodeSignTool

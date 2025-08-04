@@ -57,7 +57,7 @@ jobs:
           elif [ "${{ matrix.name }}" = "appx" ]; then
             npm run build:winstore
           elif [ "${{ matrix.name }}" = "portable" ]; then
-            npm run build:portable
+            npm run build:winportable
           elif [ "${{ matrix.name }}" = "mac" ]; then
             npm run build:mac
           fi

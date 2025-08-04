@@ -1,0 +1,109 @@
+name: Build and Release Electron App
+
+on:
+    workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  buildExe:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20'
+
+      - name: Set up Python (macOS için distutils)
+        if: matrix.os == 'macos-14'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python build deps (macOS)
+        if: matrix.os == 'macos-14'
+        run: |
+          python3 -m ensurepip --upgrade
+          python3 -m pip install --upgrade pip setuptools
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Electron App
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            npm run build:linux
+          elif [ "${{ matrix.os }}" = "windows-latest" ]; then
+            npm run build:winexe
+          else
+            npm run build:mac
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ✅ Package.json'dan version bilgisini al
+      - name: Get version from package.json
+        if: matrix.os == 'windows-latest'
+        id: package-version
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+          echo "Version: $version"
+        shell: powershell
+
+      # ✅ Dosyaların varlığını kontrol et
+      - name: List dist files (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "Checking dist directory contents:"
+          if (Test-Path "dist") {
+            Get-ChildItem -Path "dist" -Recurse | ForEach-Object { Write-Host $_.FullName }
+          } else {
+            Write-Host "dist directory does not exist!"
+            exit 1
+          }
+        shell: powershell
+
+      # ✅ Windows için eSigner ile imzala - NSIS Installer
+      - name: Sign NSIS Installer
+        if: matrix.os == 'windows-latest'
+        uses: sslcom/esigner-codesign@develop
+        with:
+          command: sign
+          username: ${{ secrets.ESIGNER_USERNAME }}
+          password: ${{ secrets.ESIGNER_PASSWORD }}
+          credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
+          totp_secret: ${{ secrets.ESIGNER_TOTP }}
+          file_path: dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe
+          malware_block: false
+          override: true
+          clean_logs: false
+
+      - name: Rebuild latest.yml after signing
+        if: matrix.os == 'windows-latest'
+        run: |
+          # Eski latest.yml dosyasını sil
+          if (Test-Path "dist/latest.yml") {
+            Remove-Item "dist/latest.yml" -Force
+            Write-Host "Old latest.yml removed"
+          }
+          
+          # electron-builder ile sadece metadata'yı yeniden oluştur
+          npx electron-builder --config.nsis.oneClick=false --config.publish=never --config.directories.output=dist --win --x64
+        shell: powershell
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Topluyo-${{ runner.os }}-${{ github.run_number }}
+          path: dist/*
+          retention-days: 9

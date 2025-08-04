@@ -102,27 +102,13 @@ jobs:
 
       - name: Update latest.yml after signing (NSIS)
         if: matrix.os == 'windows-latest' && matrix.name == 'nsis'
-        uses: sslcom/esigner-codesign@develop
-        with:
-          command: sign
-          username: ${{ secrets.ESIGNER_USERNAME }}
-          password: ${{ secrets.ESIGNER_PASSWORD }}
-          credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
-          totp_secret: ${{ secrets.ESIGNER_TOTP }}
-          file_path: dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe
-          malware_block: false
-          override: true
-          clean_logs: false
-
-      - name: Update latest.yml after signing (NSIS)
-        if: matrix.os == 'windows-latest' && matrix.name == 'nsis'
         run: |
           $exeFile = "dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe"
           $version = "${{ steps.package-version.outputs.version }}"
           
           # İmzalanmış dosyanın yeni SHA512 değerini hesapla
           $fileHash = Get-FileHash -Path $exeFile -Algorithm SHA512
-          $sha512 = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($fileHash.Hash.ToLower()))
+          $sha512 = [System.Convert]::ToBase64String([System.Convert]::FromHexString($fileHash.Hash.ToLower()))
           
           # Dosya boyutunu al
           $fileSize = (Get-Item $exeFile).Length

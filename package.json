@@ -1,6 +1,6 @@
 {
   "name": "topluyo",
-  "version": "2025.8.103",
+  "version": "2025.8.404",
   "description": "Topluyo",
   "main": "main.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "clean": "rm -rf dist",
     "clear": "if exist dist rmdir /s /q dist",
     "installer": "electron-builder --win --x64",
-    "build:winexe": "npm run clear && set NODE_ENV=production&& set STOREBUILD=false&& electron-builder --win",
+    "build:winexe": "npm run clear && set NODE_ENV=production&& set STOREBUILD=false&& electron-builder --win --x64 --config.win.target=nsis",
     "build:winstore": "npm run clear && set NODE_ENV=production&& set STOREBUILD=true&& electron-builder --win --x64 --config.win.target=appx",
     "build:linux": "npm run clean && electron-builder --linux --publish=never",
     "build:mac": "npm run clean && electron-builder --mac",
@@ -55,7 +55,6 @@
     "win": {
       "target": [
         "nsis",
-        "portable",
         "appx"
       ],
       "icon": "build/icon.ico",

@@ -88,17 +88,34 @@ jobs:
           override: true
           clean_logs: false
 
-      - name: Rebuild latest.yml after signing
+      - name: Update latest.yml after signing
         if: matrix.os == 'windows-latest'
         run: |
-          # Eski latest.yml dosyasını sil
-          if (Test-Path "dist/latest.yml") {
-            Remove-Item "dist/latest.yml" -Force
-            Write-Host "Old latest.yml removed"
-          }
+          $exeFile = "dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe"
+          $version = "${{ steps.package-version.outputs.version }}"
           
-          # electron-builder ile sadece metadata'yı yeniden oluştur
-          npx electron-builder --config.nsis.oneClick=false --config.publish=never --config.directories.output=dist --win --x64
+          # İmzalanmış dosyanın yeni SHA512 değerini hesapla
+          $fileHash = Get-FileHash -Path $exeFile -Algorithm SHA512
+          $sha512 = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($fileHash.Hash.ToLower()))
+          
+          # Dosya boyutunu al
+          $fileSize = (Get-Item $exeFile).Length
+          
+          # Yeni latest.yml içeriğini oluştur
+          $latestYml = @"
+          version: $version
+          files:
+            - url: Topluyo-Setup-$version.exe
+              sha512: $sha512
+              size: $fileSize
+          path: Topluyo-Setup-$version.exe
+          sha512: $sha512
+          releaseDate: '$((Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ"))'
+          "@
+          
+          # latest.yml dosyasını güncelle
+          $latestYml | Out-File -FilePath "dist/latest.yml" -Encoding UTF8
+          Write-Host "latest.yml updated with new SHA512"
         shell: powershell
 
       - name: Upload Build Artifacts

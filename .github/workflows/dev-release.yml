@@ -1,4 +1,4 @@
-name: Build and Release Electron App
+name: Development Build and Release Electron App
 
 on:
     workflow_dispatch:
@@ -112,7 +112,7 @@ jobs:
           password: ${{ secrets.ESIGNER_PASSWORD }}
           credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
           totp_secret: ${{ secrets.ESIGNER_TOTP }}
-          file_path: dist/Topluyo-${{ steps.package-version.outputs.version }}.exe
+          file_path: dist/win-unpacked/Topluyo.exe
           malware_block: false
           override: true
           clean_logs: false
@@ -183,4 +183,4 @@ jobs:
         with:
           name: Topluyo-${{ matrix.name }}-${{ github.run_number }}
           path: dist/*
-          retention-days: 9
+          retention-days: 5

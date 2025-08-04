@@ -162,4 +162,29 @@ const openExternalLinks = (url) => {
     shell.openExternal(url);
   }
 };
-module.exports = { isSafeUrl, mediaHandler, openExternalLinks };
+
+
+function ossWindow(){
+  let ossWin = new BrowserWindow({
+    width: 800,
+    height: 600,
+    autoHideMenuBar: true,
+    icon: path.join(app.getAppPath(), "topluyo.png"),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      enableRemoteModule: false,
+      preload: path.join(__dirname, "preload.js"),
+    },
+  });
+
+  ossWin.loadFile("oss.html");
+  ossWin.webContents.setWindowOpenHandler((_)=>{
+    return { action: "deny" };
+  })
+  ossWin.on("closed", () => {
+    ossWin = null;
+  });
+}
+
+module.exports = { isSafeUrl, mediaHandler, openExternalLinks, ossWindow };

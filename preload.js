@@ -13,6 +13,10 @@ window.addEventListener("DOMContentLoaded", () => {
     ipcRenderer.send("maximize");
   };
 
+  window.ossOpen = () => {
+    ipcRenderer.send("open-oss");
+  };
+
   document.body.classList.add("electron-app");
 
   documenter.on("input", "#run-on-startup", function () {
@@ -29,4 +33,6 @@ contextBridge.exposeInMainWorld("stream", {
 contextBridge.exposeInMainWorld("electronAPI", {
   onUpdateMessage: (callback) => ipcRenderer.on("update-message", callback),
   onProgress: (callback) => ipcRenderer.on("download-progress", callback),
+  getOSSLibraries: () => ipcRenderer.invoke("get-oss-libraries"),
+  openExternal: (url) => ipcRenderer.invoke("open-external", url),
 });

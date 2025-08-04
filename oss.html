@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Source Software - Topluyo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .oss-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .oss-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .oss-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .oss-card h3 {
+            color: #667eea;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .oss-card h3::before {
+            content: "📦";
+            margin-right: 10px;
+        }
+        
+        .oss-card p {
+            margin-bottom: 15px;
+            color: #666;
+        }
+        
+        .version {
+            background: #f0f2ff;
+            color: #667eea;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        
+        .license {
+            background: #e8f5e8;
+            color: #2d7d32;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: border-color 0.3s ease;
+        }
+        
+        .link:hover {
+            border-bottom-color: #667eea;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            opacity: 0.8;
+            margin-top: 40px;
+        }
+        
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            margin: 50px 0;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .license-toggle {
+            background: #f0f2ff;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .license-toggle:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .license-text {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            color: #495057;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .license-text.show {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .oss-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .oss-card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Open Source Kütüphaneler</h1>
+            <p>Topluyo uygulamasında kullanılan açık kaynak yazılımlar</p>
+        </div>
+        
+        <div class="loading" id="loading">
+            Kütüphaneler yükleniyor... ⏳
+        </div>
+        
+        <div class="oss-grid" id="ossGrid" style="display: none;">
+            <!-- Dinamik olarak doldurulacak -->
+        </div>
+        
+        <div class="footer">
+            <p>Bu sayfa Topluyo uygulamasında kullanılan açık kaynak yazılımları listeler.</p>
+            <p>Tüm açık kaynak projelerin geliştiricilerine teşekkür ederiz! ❤️</p>
+        </div>
+    </div>
+
+    <script>
+        // Kütüphane bilgilerini almak için API çağrısı
+        async function loadOSSLibraries() {
+            try {
+                const response = await window.electronAPI.getOSSLibraries();
+                displayLibraries(response);
+            } catch (error) {
+                showError('Kütüphane bilgileri yüklenirken hata oluştu: ' + error.message);
+            }
+        }
+
+        function displayLibraries(libraries) {
+            const loading = document.getElementById('loading');
+            const grid = document.getElementById('ossGrid');
+            
+            loading.style.display = 'none';
+            grid.style.display = 'grid';
+            
+            grid.innerHTML = libraries.map((lib, index) => `
+                <div class="oss-card">
+                    <h3>${lib.name}</h3>
+                    <div class="version">v${lib.version}</div>
+                    <p>${lib.description}</p>
+                    <p><strong>Lisans:</strong> <span class="license">${lib.license}</span></p>
+                    ${lib.homepage ? `<p><strong>Website:</strong> <a href="${lib.homepage}" class="link" onclick="openExternal('${lib.homepage}')">${lib.homepage.replace('https://', '').replace('http://', '')}</a></p>` : ''}
+                    ${lib.repository ? `<p><strong>Repository:</strong> <a href="${lib.repository}" class="link" onclick="openExternal('${lib.repository}')">GitHub</a></p>` : ''}
+                    ${lib.licenseText ? `
+                        <button class="license-toggle" onclick="toggleLicense(${index})">
+                            📄 Lisans Metnini Göster
+                        </button>
+                        <div class="license-text" id="license-${index}">
+                            ${lib.licenseText}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function toggleLicense(index) {
+            const licenseElement = document.getElementById(`license-${index}`);
+            const button = licenseElement.previousElementSibling;
+            
+            if (licenseElement.classList.contains('show')) {
+                licenseElement.classList.remove('show');
+                button.textContent = '📄 Lisans Metnini Göster';
+            } else {
+                licenseElement.classList.add('show');
+                button.textContent = '📄 Lisans Metnini Gizle';
+            }
+        }
+
+        function showError(message) {
+            const loading = document.getElementById('loading');
+            loading.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        function openExternal(url) {
+            window.electronAPI.openExternal(url);
+        }
+
+        // Sayfa yüklendiğinde kütüphaneleri al
+        document.addEventListener('DOMContentLoaded', loadOSSLibraries);
+    </script>
+</body>
+</html>

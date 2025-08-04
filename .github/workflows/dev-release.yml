@@ -23,10 +23,10 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
@@ -54,8 +54,6 @@ jobs:
             npm run build:winexe
           elif [ "${{ matrix.name }}" = "appx" ]; then
             npm run build:winstore
-          elif [ "${{ matrix.name }}" = "portable" ]; then
-            npm run build:winportable
           elif [ "${{ matrix.name }}" = "mac" ]; then
             npm run build:mac
           fi
@@ -108,26 +106,28 @@ jobs:
           
           # İmzalanmış dosyanın yeni SHA512 değerini hesapla
           $fileHash = Get-FileHash -Path $exeFile -Algorithm SHA512
-          $sha512 = [System.Convert]::ToBase64String([System.Convert]::FromHexString($fileHash.Hash.ToLower()))
+          # Hex string'i byte array'e çevir ve sonra Base64'e çevir
+          $hexBytes = [byte[]] -split ($fileHash.Hash -replace '..', '0x$& ')
+          $sha512 = [System.Convert]::ToBase64String($hexBytes)
           
           # Dosya boyutunu al
           $fileSize = (Get-Item $exeFile).Length
           
           # Yeni latest.yml içeriğini oluştur
-          $latestYml = @"
-          version: $version
-          files:
-            - url: Topluyo-Setup-$version.exe
-              sha512: $sha512
-              size: $fileSize
-          path: Topluyo-Setup-$version.exe
-          sha512: $sha512
-          releaseDate: '$((Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ"))'
-          "@
+          $currentDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+          $latestYml = "version: $version`n" + 
+                       "files:`n" + 
+                       "  - url: Topluyo-Setup-$version.exe`n" + 
+                       "    sha512: $sha512`n" + 
+                       "    size: $fileSize`n" + 
+                       "path: Topluyo-Setup-$version.exe`n" + 
+                       "sha512: $sha512`n" + 
+                       "releaseDate: '$currentDate'"
           
-          # latest.yml dosyasını güncelle
-          $latestYml | Out-File -FilePath "dist/latest.yml" -Encoding UTF8
-          Write-Host "latest.yml updated with new SHA512"
+          # latest.yml dosyasını güncelle (BOM olmadan UTF8)
+          [System.IO.File]::WriteAllText("dist/latest.yml", $latestYml, [System.Text.UTF8Encoding]::new($false))
+          Write-Host "latest.yml updated with new SHA512: $sha512"
+          Write-Host "File size: $fileSize bytes"
         shell: powershell
 
       - name: Upload Build Artifacts

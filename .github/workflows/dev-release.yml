@@ -1,4 +1,4 @@
-name: Build and Release Electron App
+name: Development Build and Release Electron App
 
 on:
     workflow_dispatch:
@@ -10,7 +10,15 @@ jobs:
   buildExe:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-14]
+        include:
+          - os: ubuntu-latest
+            name: linux
+          - os: windows-latest
+            name: nsis
+          - os: windows-latest
+            name: appx
+          - os: macos-14
+            name: mac
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -40,11 +48,15 @@ jobs:
       - name: Build Electron App
         shell: bash
         run: |
-          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          if [ "${{ matrix.name }}" = "linux" ]; then
             npm run build:linux
-          elif [ "${{ matrix.os }}" = "windows-latest" ]; then
+          elif [ "${{ matrix.name }}" = "nsis" ]; then
             npm run build:winexe
-          else
+          elif [ "${{ matrix.name }}" = "appx" ]; then
+            npm run build:winstore
+          elif [ "${{ matrix.name }}" = "portable" ]; then
+            npm run build:winportable
+          elif [ "${{ matrix.name }}" = "mac" ]; then
             npm run build:mac
           fi
         env:
@@ -75,7 +87,7 @@ jobs:
 
       # ✅ Windows için eSigner ile imzala - NSIS Installer
       - name: Sign NSIS Installer
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-latest' && matrix.name == 'nsis'
         uses: sslcom/esigner-codesign@develop
         with:
           command: sign
@@ -88,8 +100,22 @@ jobs:
           override: true
           clean_logs: false
 
-      - name: Update latest.yml after signing
-        if: matrix.os == 'windows-latest'
+      - name: Update latest.yml after signing (NSIS)
+        if: matrix.os == 'windows-latest' && matrix.name == 'nsis'
+        uses: sslcom/esigner-codesign@develop
+        with:
+          command: sign
+          username: ${{ secrets.ESIGNER_USERNAME }}
+          password: ${{ secrets.ESIGNER_PASSWORD }}
+          credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
+          totp_secret: ${{ secrets.ESIGNER_TOTP }}
+          file_path: dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe
+          malware_block: false
+          override: true
+          clean_logs: false
+
+      - name: Update latest.yml after signing (NSIS)
+        if: matrix.os == 'windows-latest' && matrix.name == 'nsis'
         run: |
           $exeFile = "dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe"
           $version = "${{ steps.package-version.outputs.version }}"
@@ -121,6 +147,6 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Topluyo-${{ runner.os }}-${{ github.run_number }}
+          name: Topluyo-${{ matrix.name }}-${{ github.run_number }}
           path: dist/*
-          retention-days: 9
+          retention-days: 5

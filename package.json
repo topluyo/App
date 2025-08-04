@@ -13,7 +13,8 @@
     "clear": "if exist dist rmdir /s /q dist",
     "installer": "electron-builder --win --x64",
     "build:winexe": "npm run clear && set NODE_ENV=production&& set STOREBUILD=false&& electron-builder --win --x64 --config.win.target=nsis",
-    "build:winstore": "npm run clear && set NODE_ENV=production&& set STOREBUILD=true&& electron-builder --win --x64 --config.win.target=appx",
+    "build:winstore": "npm run clear && set NODE_ENV=production&& set STOREBUILD=true&& electron-builder --win --config.win.target=appx",
+    "build:winportable": "npm run clear && set NODE_ENV=production&& electron-builder --win --x64 --config.win.target=portable",
     "build:linux": "npm run clean && electron-builder --linux --publish=never",
     "build:mac": "npm run clean && electron-builder --mac",
     "rebuild": "electron-rebuild -f -w iohook"
@@ -54,18 +55,33 @@
     ],
     "win": {
       "target": [
-        "nsis",
-        "appx"
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "appx",
+          "arch": ["x64", "ia32", "arm64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
       ],
       "icon": "build/icon.ico",
-      "artifactName": "Topluyo-Setup-${version}.${ext}"
+      "artifactName": "Topluyo-Setup-${version}.${ext}",
+      "requestedExecutionLevel": "asInvoker"
     },
     "appx": {
-      "identityName": "Topluyo.Topluyo",
-      "publisher": "CN=B644B811-3CB1-46E2-8448-9423A6C95D4A",
-      "publisherDisplayName": "Topluyo",
+      "identityName": "TopluyoApp.Topluyo",
+      "publisher": "CN=569715F9-C64D-44BC-9F1E-31B71AC68EEC",
+      "publisherDisplayName": "TopluyoApp",
       "languages": "tr-TR",
-      "backgroundColor": "#191819"
+      "backgroundColor": "#191819",
+      "artifactName": "TopluyoApp-${version}.${ext}",
+      "showNameOnTiles": true,
+      "electronUpdaterAware": true,
+      "setBuildNumber": false
     },
     "nsis": {
       "oneClick": false,

@@ -234,8 +234,8 @@
                     <div class="version">v${lib.version}</div>
                     <p>${lib.description}</p>
                     <p><strong>Lisans:</strong> <span class="license">${lib.license}</span></p>
-                    ${lib.homepage ? `<p><strong>Website:</strong> <a href="${lib.homepage}" class="link" onclick="openExternal('${lib.homepage}')">${lib.homepage.replace('https://', '').replace('http://', '')}</a></p>` : ''}
-                    ${lib.repository ? `<p><strong>Repository:</strong> <a href="${lib.repository}" class="link" onclick="openExternal('${lib.repository}')">GitHub</a></p>` : ''}
+                    ${lib.homepage ? `<p><strong>Website:</strong> <a href="#" class="link" onclick="openExternal('${lib.homepage}'); return false;">${lib.homepage.replace('https://', '').replace('http://', '')}</a></p>` : ''}
+                    ${lib.repository ? `<p><strong>Repository:</strong> <a href="#" class="link" onclick="openExternal('${lib.repository}'); return false;">GitHub</a></p>` : ''}
                     ${lib.licenseText ? `
                         <button class="license-toggle" onclick="toggleLicense(${index})">
                             📄 Lisans Metnini Göster
@@ -267,7 +267,9 @@
         }
 
         function openExternal(url) {
+            event.preventDefault();
             window.electronAPI.openExternal(url);
+            return false;
         }
 
         // Sayfa yüklendiğinde kütüphaneleri al

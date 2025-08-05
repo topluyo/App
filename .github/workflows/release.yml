@@ -132,14 +132,14 @@ jobs:
           Write-Host "File size: $fileSize bytes"
         shell: powershell
 
-      - name: Delete builder-debug.yml cross-platform
-        run: |
-          if [ $RUNNER_OS = 'Windows' ]; then
-            del /F dist\builder-debug.yml
-          else
-            rm -f dist/builder-debug.yml
-          fi
-        shell: bash
+    - name: Delete builder-debug.yml cross-platform
+      shell: pwsh
+      run: |
+        if ($IsWindows) {
+          Remove-Item -Path dist\builder-debug.yml -Force -ErrorAction SilentlyContinue
+        } else {
+          rm -f dist/builder-debug.yml
+        }
 
 
       - name: Create GitHub Release

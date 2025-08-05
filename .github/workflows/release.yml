@@ -132,6 +132,16 @@ jobs:
           Write-Host "File size: $fileSize bytes"
         shell: powershell
 
+      - name: Delete builder-debug.yml cross-platform
+        run: |
+          if [ $RUNNER_OS = 'Windows' ]; then
+            del /F dist\builder-debug.yml
+          else
+            rm -f dist/builder-debug.yml
+          fi
+        shell: bash
+
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:

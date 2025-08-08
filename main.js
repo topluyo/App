@@ -1,10 +1,27 @@
 const { app, BrowserWindow, ipcMain, shell, dialog } = require("electron");
 const windowStateKeeper = require("electron-window-state");
 const { createMainWindow } = require("./Windows");
-const { isSafeUrl, openExternalLinks, ossWindow } = require("./utils");
-const { URL } = require("url");
+const { openExternalLinks, ossWindow } = require("./utils");
 const fs = require("fs");
 const path = require("path");
+
+// Windows Store detection
+const isWindowsStore = process.env.WINDOWS_STORE === 'true' || process.windowsStore || false;
+
+// Store versiyonu için error handling
+if (isWindowsStore) {
+  process.on('uncaughtException', (error) => {
+    console.log('Uncaught Exception in Store version:', error);
+    // Store versiyonunda uygulamayı crash etme
+    return;
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    console.log('Unhandled Rejection in Store version:', reason);
+    // Store versiyonunda uygulamayı crash etme
+    return;
+  });
+}
 
 let mainWindow = null;
 let deeplinkingUrl = null;
@@ -27,8 +44,13 @@ if (process.platform === "win32") {
   } else {
     app.setAsDefaultProtocolClient("topluyo");
   }
-} else if (process.platform === "linux") {
-  require("./linuxscript");
+} else if (process.platform === "linux" && !isWindowsStore) {
+  // Store versiyonunda Linux script'i çalıştırma
+  try {
+    require("./linuxscript");
+  } catch (error) {
+    console.log('Linux script not available:', error.message);
+  }
 }
 
 if (!gotLock) {

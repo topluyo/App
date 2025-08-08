@@ -1,8 +1,20 @@
 const { BrowserWindow, session } = require("electron");
-const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const log = require("electron-log");
 const { mediaHandler } = require("./utils");
+
+// Windows Store detection
+const isWindowsStore = process.env.WINDOWS_STORE === 'true' || process.env.STOREBUILD === 'true';
+
+// Store versiyonunda electron-updater yükleme
+let autoUpdater = null;
+if (!isWindowsStore) {
+  try {
+    autoUpdater = require("electron-updater").autoUpdater;
+  } catch (error) {
+    console.log("electron-updater not available in Store version");
+  }
+}
 
 function createMainWindow(windowstate, url) {
   let mainWindow = new BrowserWindow({
@@ -32,7 +44,13 @@ function createMainWindow(windowstate, url) {
   if (windowstate) windowstate.manage(mainWindow);
   if (!url) {
     mainWindow.webContents.once("did-finish-load", () => {
-      checkForUpdatesAndLoad(mainWindow);
+      // Store versiyonunda auto-updater çalıştırma
+      if (!isWindowsStore) {
+        checkForUpdatesAndLoad(mainWindow);
+      } else {
+        // Store versiyonunda direkt ana sayfayı yükle
+        mainWindow.loadURL("https://topluyo.com");
+      }
     });
   } else {
     url = url.startsWith("/") ? url : `/${url}`;
@@ -63,6 +81,13 @@ function createMainWindow(windowstate, url) {
 }
 
 function checkForUpdatesAndLoad(mainWindow) {
+  // Store versiyonunda auto-updater mevcut değilse direkt ana sayfayı yükle
+  if (!autoUpdater || isWindowsStore) {
+    console.log("Auto-updater not available in Store version, loading main page");
+    mainWindow.loadURL("https://topluyo.com");
+    return;
+  }
+
   autoUpdater.logger = log;
   autoUpdater.logger.transports.file.level = "info";
   autoUpdater.autoDownload = true;

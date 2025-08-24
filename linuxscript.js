@@ -3,39 +3,6 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-function fixChromeSandbox() {
-  if (process.env.APPIMAGE) {
-    console.log("ℹ️ AppImage ortamı: chrome-sandbox ayarı gereksiz, atlanıyor.");
-    return;
-  }
-
-  try {
-    // Farklı olası konumları kontrol et
-    const possiblePaths = [
-      path.join(__dirname, "node_modules/electron/dist/chrome-sandbox"),
-      path.join(process.resourcesPath, "chrome-sandbox"),
-      path.join(__dirname, "chrome-sandbox")
-    ];
-    
-    let chromeSandboxPath = null;
-    for (const p of possiblePaths) {
-      if (fs.existsSync(p)) {
-        chromeSandboxPath = p;
-        break;
-      }
-    }
-    
-    if (chromeSandboxPath) {
-      console.log("🔧 chrome-sandbox bulundu, kaldırılıyor...");
-      fs.unlinkSync(chromeSandboxPath);
-      console.log("✅ chrome-sandbox kaldırıldı.");
-    } else {
-      console.log("ℹ️ chrome-sandbox bulunamadı (bu normal olabilir).");
-    }
-  } catch (error) {
-    console.error("🚫 chrome-sandbox işleminde hata:", error.message);
-  }
-}
 function ensureShmExists() {
   try {
     const shmStat = fs.statSync("/dev/shm");
@@ -79,7 +46,6 @@ StartupWMClass=Topluyo
 }
 
 if (process.platform === "linux") {
-  fixChromeSandbox();
   registerProtocol();
     ensureShmExists();
 }

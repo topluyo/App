@@ -2,21 +2,6 @@
 const { ipcRenderer, contextBridge } = require("electron");
 
 window.addEventListener("DOMContentLoaded", () => {
-  window.closeWindow = () => {
-    ipcRenderer.send("close");
-  };
-
-  window.minimizeWindow = () => {
-    ipcRenderer.send("minimize");
-  };
-  window.maximizeWindow = () => {
-    ipcRenderer.send("maximize");
-  };
-
-  window.ossOpen = () => {
-    ipcRenderer.send("open-oss");
-  };
-
   document.body.classList.add("electron-app");
 
   documenter.on("input", "#run-on-startup", function () {
@@ -35,4 +20,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onProgress: (callback) => ipcRenderer.on("download-progress", callback),
   getOSSLibraries: () => ipcRenderer.invoke("get-oss-libraries"),
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
+  closeWindow: () => ipcRenderer.invoke("close"),
+  minimizeWindow: () => ipcRenderer.invoke("minimize"),
+  maximizeWindow: () => ipcRenderer.invoke("maximize"),
+  ossOpen: () => ipcRenderer.invoke("open-oss"),
 });

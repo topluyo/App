@@ -93,7 +93,6 @@ const config = {
       "NSScreenCaptureDescription": "Topluyo uygulaması ekran paylaşımı için ekran erişimi gerektirir."
     }
   },
-  "afterPack": "./fixChromeSandbox.js",
   "publish": [
     {
       "provider": "github",

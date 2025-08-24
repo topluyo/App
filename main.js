@@ -28,24 +28,10 @@ let deeplinkingUrl = null;
 
 const gotLock = app.requestSingleInstanceLock();
 if (process.platform === "linux") {
-  // Sandbox'ı tamamen devre dışı bırak
-  process.env.ELECTRON_DISABLE_SANDBOX = "1";
-  process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
-  
   app.disableHardwareAcceleration();
   app.commandLine.appendSwitch("disable-gpu");
   app.commandLine.appendSwitch("disable-software-rasterizer");
-  app.commandLine.appendSwitch("no-sandbox");
-  app.commandLine.appendSwitch("disable-setuid-sandbox");
-  app.commandLine.appendSwitch("disable-dev-shm-usage");
   app.commandLine.appendSwitch("disable-accelerated-2d-canvas");
-  app.commandLine.appendSwitch("disable-gpu-sandbox");
-  
-  // AppImage ortamında ek ayarlar
-  if (process.env.APPIMAGE) {
-    app.commandLine.appendSwitch("disable-seccomp-filter-sandbox");
-    app.commandLine.appendSwitch("disable-namespace-sandbox");
-  }
 }
 
 if (process.platform === "win32") {
@@ -163,7 +149,7 @@ app.on("window-all-closed", function () {
   }
 });
 
-ipcMain.on("open-oss",()=>{
+ipcMain.handle("open-oss",()=>{
   ossWindow();
 });
 
@@ -389,10 +375,10 @@ ipcMain.handle("open-external", async (_, url) => {
   shell.openExternal(url);
 });
 
-ipcMain.on("minimize", () => {
+ipcMain.handle("minimize", () => {
   BrowserWindow.getFocusedWindow().minimize();
 });
-ipcMain.on("maximize", () => {
+ipcMain.handle("maximize", () => {
   const focusedWindow = BrowserWindow.getFocusedWindow();
   if (focusedWindow.isMaximized()) {
     focusedWindow.unmaximize();
@@ -400,6 +386,6 @@ ipcMain.on("maximize", () => {
     focusedWindow.maximize();
   }
 });
-ipcMain.on("close", () => {
+ipcMain.handle("close", () => {
   BrowserWindow.getFocusedWindow().close();
 });

@@ -101,7 +101,6 @@
       "artifactName": "Topluyo-${version}.${ext}",
       "maintainer": "Hasan Delibaş <info@topluyo.com>",
       "desktop": {
-        "Exec": "Topluyo --no-sandbox %U",
         "MimeType": "x-scheme-handler/topluyo"
       }
     },
@@ -129,7 +128,6 @@
         "NSScreenCaptureDescription":"Topluyo uygulaması ekran paylaşımı için ekran erişimi gerektirir."
       }
     },
-    "afterPack": "./fixChromeSandbox.js",
     "publish": [
       {
         "provider": "github",

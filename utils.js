@@ -156,8 +156,14 @@ function isSafeUrl(url) {
 
 const openExternalLinks = (url) => {
   if (process.platform === "linux") {
-    const newUrl = new URL(url);
-    require("child_process").exec(`xdg-open "${newUrl}"`);
+    const isFlatpak = process.env.FLATPAK_ID || process.env.FLATPAK_DEST;
+    
+    if (isFlatpak) {
+      shell.openExternal(url);
+    } else {
+      const newUrl = new URL(url);
+      require("child_process").exec(`xdg-open "${newUrl}"`);
+    }
   } else {
     shell.openExternal(url);
   }

@@ -32,6 +32,8 @@ function createMainWindow(windowstate, url) {
       contextIsolation: false,
       nodeIntegration: true,
       preload: path.join(__dirname, "preload.js"),
+      sandbox: false,
+      webSecurity: false,
     },
   });
 

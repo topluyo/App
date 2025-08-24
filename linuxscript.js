@@ -10,17 +10,30 @@ function fixChromeSandbox() {
   }
 
   try {
-    const chromeSandboxPath = path.join(__dirname, "node_modules/electron/dist/chrome-sandbox");
-    if (fs.existsSync(chromeSandboxPath)) {
-      console.log("🔧 chrome-sandbox izni ayarlanıyor...");
-      execSync(`sudo chown root "${chromeSandboxPath}"`);
-      execSync(`sudo chmod 4755 "${chromeSandboxPath}"`);
-      console.log("✅ chrome-sandbox hazır.");
+    // Farklı olası konumları kontrol et
+    const possiblePaths = [
+      path.join(__dirname, "node_modules/electron/dist/chrome-sandbox"),
+      path.join(process.resourcesPath, "chrome-sandbox"),
+      path.join(__dirname, "chrome-sandbox")
+    ];
+    
+    let chromeSandboxPath = null;
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        chromeSandboxPath = p;
+        break;
+      }
+    }
+    
+    if (chromeSandboxPath) {
+      console.log("🔧 chrome-sandbox bulundu, kaldırılıyor...");
+      fs.unlinkSync(chromeSandboxPath);
+      console.log("✅ chrome-sandbox kaldırıldı.");
     } else {
-      console.warn("⚠️ chrome-sandbox bulunamadı.");
+      console.log("ℹ️ chrome-sandbox bulunamadı (bu normal olabilir).");
     }
   } catch (error) {
-    console.error("🚫 chrome-sandbox ayarlanırken hata:", error.message);
+    console.error("🚫 chrome-sandbox işleminde hata:", error.message);
   }
 }
 function ensureShmExists() {

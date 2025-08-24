@@ -100,9 +100,6 @@
       "executableName": "Topluyo",
       "artifactName": "Topluyo-${version}.${ext}",
       "maintainer": "Hasan Delibaş <info@topluyo.com>",
-      "env": {
-        "ELECTRON_DISABLE_SANDBOX": "1"
-      },
       "desktop": {
         "Exec": "Topluyo --no-sandbox %U",
         "MimeType": "x-scheme-handler/topluyo"

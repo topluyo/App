@@ -96,6 +96,18 @@ function checkForUpdatesAndLoad(mainWindow) {
   if(process.env.NODE_ENV === "development") {
       mainWindow.loadURL("https://topluyo.com");
     }
+
+  autoUpdater.on("update-cancelled", () => {
+    console.log("Güncelleme iptal edildi veya devre dışı");
+    mainWindow.webContents.send(
+      "update-message",
+      "ℹ️ Güncelleme devre dışı. Ana sayfaya yönlendiriliyorsunuz..."
+    );
+    setTimeout(() => {
+      mainWindow.loadURL("https://topluyo.com");
+    }, 1000);
+  });
+
   autoUpdater.on("checking-for-update", () => {
     console.log("Güncellemeler kontrol ediliyor...");
     autoUpdater.logger = log;

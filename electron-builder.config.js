@@ -58,7 +58,7 @@ const config = {
   },
   "linux": {
     "target": [
-      "AppImage",
+      "flatpak",
       "snap",
       "tar.gz"
     ],
@@ -72,6 +72,29 @@ const config = {
   "snap": {
     "confinement": "classic",
     "publish": false
+  },
+  "flatpak": {
+    "runtime": "org.freedesktop.Platform",
+    "runtimeVersion": "21.08",
+    "sdk": "org.freedesktop.Sdk",
+    "command": "Topluyo",
+    "finishArgs": [
+      "--share=network",
+      "--socket=fallback-x11",
+      "--socket=wayland",
+      "--device=dri",
+      "--filesystem=home",
+      "--device=all",
+      "--socket=pulseaudio",
+      "--share=ipc",
+      "--env=PULSE_RUNTIME_PATH=/run/user/1000/pulse",
+      "--talk-name=org.freedesktop.portal.Camera",
+      "--talk-name=org.freedesktop.portal.Device",
+      "--talk-name=org.freedesktop.portal.ScreenCast",
+      "--talk-name=org.freedesktop.portal.Desktop",
+      "--talk-name=org.freedesktop.Notifications",
+      "--own-name=com.topluyo.app"
+    ]
   },
   "mac": {
     "target": [

@@ -108,7 +108,6 @@
       "maintainer": "Hasan Delibaş <info@topluyo.com>",
       "desktop": {
         "MimeType": "x-scheme-handler/topluyo;",
-        "Exec": "%f",
         "StartupNotify": "true"
       }
     },

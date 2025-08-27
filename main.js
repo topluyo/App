@@ -44,13 +44,6 @@ if (process.platform === "win32") {
   } else {
     app.setAsDefaultProtocolClient("topluyo");
   }
-} else if (process.platform === "linux" && !isWindowsStore) {
-  // Store versiyonunda Linux script'i çalıştırma
-  try {
-    require("./linuxscript");
-  } catch (error) {
-    console.log('Linux script not available:', error.message);
-  }
 }
 
 if (!gotLock) {

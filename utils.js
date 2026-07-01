@@ -77,6 +77,7 @@ async function createStreamWindow(_, callback) {
       if (data.isAudioEnabled) {
         stream.audio = "loopback";
       }
+      global.lastSelectedSource = data.id;
       callback(stream);
       ipcMain.removeHandler("getSources");
       ipcMain.removeHandler("setSource");

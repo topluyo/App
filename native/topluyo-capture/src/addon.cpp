@@ -66,7 +66,7 @@ Napi::Value StartCapture(const Napi::CallbackInfo& info) {
             delete p;
         };
         
-        tsfn.BlockingCall(payload, napiCallback);
+        tsfn.NonBlockingCall(payload, napiCallback);
     };
 
     capture.Start(callback);
@@ -83,6 +83,24 @@ Napi::Value StopCapture(const Napi::CallbackInfo& info) {
     return Napi::Boolean::New(env, true);
 }
 
+struct EnumUWPData {
+    DWORD pid;
+    bool found;
+};
+
+BOOL CALLBACK EnumChildProc(HWND hwnd, LPARAM lParam) {
+    char className[256];
+    if (GetClassNameA(hwnd, className, sizeof(className))) {
+        if (strcmp(className, "Windows.UI.Core.CoreWindow") == 0) {
+            EnumUWPData* data = (EnumUWPData*)lParam;
+            GetWindowThreadProcessId(hwnd, &data->pid);
+            data->found = true;
+            return FALSE; // Stop enumeration
+        }
+    }
+    return TRUE;
+}
+
 Napi::Value GetPidFromHwnd(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     if (info.Length() < 1 || !info[0].IsNumber()) {
@@ -92,6 +110,19 @@ Napi::Value GetPidFromHwnd(const Napi::CallbackInfo& info) {
     HWND hwnd = (HWND)(uintptr_t)info[0].As<Napi::Number>().Uint32Value();
     DWORD pid = 0;
     GetWindowThreadProcessId(hwnd, &pid);
+
+    // Optimization & Fix: If the window is a UWP ApplicationFrameWindow, the actual media process is a child window.
+    char className[256];
+    if (GetClassNameA(hwnd, className, sizeof(className))) {
+        if (strcmp(className, "ApplicationFrameWindow") == 0) {
+            EnumUWPData data = { pid, false };
+            EnumChildWindows(hwnd, EnumChildProc, (LPARAM)&data);
+            if (data.found) {
+                pid = data.pid;
+            }
+        }
+    }
+
     return Napi::Number::New(env, pid);
 }
 

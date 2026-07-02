@@ -5,6 +5,13 @@ const { openExternalLinks, ossWindow } = require("./utils");
 const fs = require("fs");
 const path = require("path");
 
+let captureModule = null;
+try {
+  captureModule = require("./native/topluyo-capture");
+} catch (e) {
+  console.log("Native capture module not available yet:", e.message);
+}
+
 // Windows Store detection
 const isWindowsStore = process.env.WINDOWS_STORE === 'true' || process.windowsStore || false;
 
@@ -149,7 +156,7 @@ app.on("window-all-closed", function () {
   }
 });
 
-ipcMain.on("open-oss",()=>{
+ipcMain.on("open-oss", () => {
   ossWindow();
 });
 
@@ -158,9 +165,9 @@ ipcMain.handle("get-oss-libraries", async () => {
   try {
     const packageJsonPath = path.join(__dirname, "package.json");
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-    
+
     const libraries = [];
-    
+
     // Lisans dosyasını okuma fonksiyonu
     const readLicenseFile = (packagePath) => {
       const possibleLicenseFiles = [
@@ -174,7 +181,7 @@ ipcMain.handle("get-oss-libraries", async () => {
         'license.txt',
         'license.md'
       ];
-      
+
       for (const fileName of possibleLicenseFiles) {
         const licensePath = path.join(packagePath, fileName);
         if (fs.existsSync(licensePath)) {
@@ -187,7 +194,7 @@ ipcMain.handle("get-oss-libraries", async () => {
       }
       return null;
     };
-    
+
     // Ana uygulama bilgisi
     const mainLicenseText = readLicenseFile(__dirname);
     libraries.push({
@@ -199,18 +206,18 @@ ipcMain.handle("get-oss-libraries", async () => {
       homepage: "https://topluyo.com",
       repository: null
     });
-    
+
     // Dependencies
     if (packageJson.dependencies) {
       for (const [name, version] of Object.entries(packageJson.dependencies)) {
         try {
           const depPackagePath = path.join(__dirname, "node_modules", name);
           const depPackageJsonPath = path.join(depPackagePath, "package.json");
-          
+
           if (fs.existsSync(depPackageJsonPath)) {
             const depPackage = JSON.parse(fs.readFileSync(depPackageJsonPath, 'utf8'));
             const licenseText = readLicenseFile(depPackagePath);
-            
+
             libraries.push({
               name: depPackage.name,
               version: depPackage.version,
@@ -237,18 +244,18 @@ ipcMain.handle("get-oss-libraries", async () => {
         }
       }
     }
-    
+
     // DevDependencies (sadece production'da değilse)
     if (packageJson.devDependencies && process.env.NODE_ENV === 'development') {
       for (const [name, version] of Object.entries(packageJson.devDependencies)) {
         try {
           const depPackagePath = path.join(__dirname, "node_modules", name);
           const depPackageJsonPath = path.join(depPackagePath, "package.json");
-          
+
           if (fs.existsSync(depPackageJsonPath)) {
             const depPackage = JSON.parse(fs.readFileSync(depPackageJsonPath, 'utf8'));
             const licenseText = readLicenseFile(depPackagePath);
-            
+
             libraries.push({
               name: depPackage.name + " (dev)",
               version: depPackage.version,
@@ -264,7 +271,7 @@ ipcMain.handle("get-oss-libraries", async () => {
         }
       }
     }
-    
+
     // Electron ve Node.js gibi sistem bileşenleri
     libraries.push({
       name: "Electron",
@@ -295,7 +302,7 @@ SOFTWARE.`,
       homepage: "https://electronjs.org",
       repository: "https://github.com/electron/electron"
     });
-    
+
     libraries.push({
       name: "Node.js",
       version: process.versions.node,
@@ -325,7 +332,7 @@ SOFTWARE.`,
       homepage: "https://nodejs.org",
       repository: "https://github.com/nodejs/node"
     });
-    
+
     libraries.push({
       name: "Chromium",
       version: process.versions.chrome,
@@ -362,7 +369,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.`,
       homepage: "https://www.chromium.org",
       repository: "https://chromium.googlesource.com/chromium/src/"
     });
-    
+
     return libraries;
   } catch (error) {
     console.error("Error reading OSS libraries:", error);
@@ -388,4 +395,81 @@ ipcMain.on("maximize", () => {
 });
 ipcMain.on("close", () => {
   BrowserWindow.getFocusedWindow().close();
+});
+
+ipcMain.handle("start-native-audio", (event) => {
+  const sourceId = global.lastSelectedSource || "";
+  console.log("start-native-audio invoked. Selected source:", sourceId);
+
+  if (process.platform === "linux") {
+    try {
+      const { setupLinuxAudio } = require('./linux-audio');
+      return setupLinuxAudio(sourceId);
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  }
+
+  if (process.platform === "darwin") {
+    return false; // macOS için direkt web apilerine bırak
+  }
+
+  if (!captureModule) return false;
+
+  // Find the actual Audio Service PID to exclude Topluyo's audio perfectly
+  const { app } = require('electron');
+  const metrics = app.getAppMetrics();
+  const audioService = metrics.find(m => m.type === 'Utility' && m.name === 'Audio Service');
+  let targetPid = audioService ? audioService.pid : process.pid; 
+  let isIncludeMode = false;   // Default: Exclude Topluyo (Screen Share)
+
+  if (sourceId.startsWith("window:")) {
+    // e.g., "window:1575868:0"
+    const parts = sourceId.split(":");
+    if (parts.length >= 2) {
+      const hwnd = parseInt(parts[1], 10);
+      const pid = captureModule.getPidFromHwnd(hwnd);
+      if (pid > 0) {
+        targetPid = pid;
+        isIncludeMode = true; // Only capture this application
+        console.log(`Window Capture Mode: HWND=${hwnd}, PID=${pid}. We will ONLY capture this app's audio.`);
+      }
+    }
+  } else {
+    console.log(`Screen Capture Mode: Excluding Topluyo PID=${targetPid} to prevent echo.`);
+  }
+
+  captureModule.stopCapture();
+
+  try {
+    return captureModule.startCapture(targetPid, isIncludeMode, (buffer, meta) => {
+      try {
+        if (event.senderFrame && !event.senderFrame.isDestroyed()) {
+          event.senderFrame.send("native-audio-data", buffer, meta);
+        } else if (event.sender && !event.sender.isDestroyed()) {
+          event.sender.send("native-audio-data", buffer, meta);
+        }
+      } catch (e) {
+        // Ignore if sender is destroyed
+      }
+    });
+  } catch (err) {
+    console.error("Native WASAPI failed to start:", err);
+    return false; // Tells preload.js to fallback to Electron loopback
+  }
+});
+
+ipcMain.handle("stop-native-audio", () => {
+  if (process.platform === "linux") {
+    try {
+      const { cleanupLinuxAudio } = require('./linux-audio');
+      cleanupLinuxAudio();
+    } catch (e) {}
+  }
+  
+  if (captureModule) {
+    captureModule.stopCapture();
+  }
+  return true;
 });

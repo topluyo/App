@@ -15,20 +15,21 @@
     "build:winexe": "npm run clear && set NODE_ENV=production&& set STOREBUILD=false&& electron-builder --win --x64 --config.win.target=nsis",
     "build:winstore": "npm run clear && set NODE_ENV=production&& set STOREBUILD=true&& set WINDOWS_STORE=true&& electron-builder --win --config.win.target=appx --config=electron-builder.config.js",
     "build:linux": "npm run clean && electron-builder --linux --publish=never",
-    "build:mac": "npm run clean && electron-builder --mac",
-    "rebuild": "electron-rebuild -f -w iohook"
+    "build:mac": "npm run clean && electron-builder --mac"
   },
   "author": "Topluyo Team",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^33.4.11",
-    "electron-builder": "^25.1.8"
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "electron-log": "^5.4.1",
     "electron-updater": "^6.3.9",
-    "electron-window-state": "^5.0.3",
-    "uiohook-napi": "^1.5.4"
+    "electron-window-state": "^5.0.3"
+  },
+  "optionalDependencies": {
+    "topluyo-capture": "file:./native/topluyo-capture"
   },
   "build": {
     "appId": "com.topluyo.app",
@@ -39,13 +40,17 @@
     "files": [
       "build/**/*",
       "node_modules/**/*",
-      "!node_modules/uiohook-napi/**/*",
+      "native/topluyo-capture/build/Release/*.node",
       "*.html",
       "icons/*",
       "*.rtf",
       "*.js"
     ],
-    "protocols":[
+    "asarUnpack": [
+      "node_modules/topluyo-capture/build/Release/*.node",
+      "native/topluyo-capture/build/Release/*.node"
+    ],
+    "protocols": [
       {
         "name": "Topluyo",
         "schemes": [
@@ -57,11 +62,17 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "appx",
-          "arch": ["x64", "ia32", "arm64"]
+          "arch": [
+            "x64",
+            "ia32",
+            "arm64"
+          ]
         }
       ],
       "icon": "build/icon.ico",
@@ -101,11 +112,11 @@
       "artifactName": "Topluyo-${version}.${ext}",
       "maintainer": "Hasan Delibaş <info@topluyo.com>"
     },
-    "snap":{
+    "snap": {
       "confinement": "classic",
       "publish": false
     },
-    "mac":{
+    "mac": {
       "target": [
         "dmg",
         "pkg",
@@ -121,8 +132,8 @@
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Topluyo uygulaması mikrofon erişimi gerektirir.",
         "NSCameraUsageDescription": "Topluyo uygulaması kamera erişimi gerektirir.",
-        "NSScreenRecordingUsageDescription":"Topluyo uygulaması ekran paylaşımı ve ekran kaydı için ekran erişimi gerektirir.",
-        "NSScreenCaptureDescription":"Topluyo uygulaması ekran paylaşımı için ekran erişimi gerektirir."
+        "NSScreenRecordingUsageDescription": "Topluyo uygulaması ekran paylaşımı ve ekran kaydı için ekran erişimi gerektirir.",
+        "NSScreenCaptureDescription": "Topluyo uygulaması ekran paylaşımı için ekran erişimi gerektirir."
       }
     },
     "afterPack": "./fixChromeSandbox.js",

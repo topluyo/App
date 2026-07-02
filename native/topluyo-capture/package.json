@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Native Windows Capture Addon for Topluyo",
   "main": "index.js",
+  "os": ["win32"],
   "gypfile": true,
   "scripts": {
     "build": "node-gyp rebuild",

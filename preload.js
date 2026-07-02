@@ -46,7 +46,44 @@ if (typeof MediaDevices !== 'undefined' && MediaDevices.prototype.getDisplayMedi
         const started = await ipcRenderer.invoke('start-native-audio');
         console.log("[NativeCapture] WASAPI start response:", started);
         
-        if (started) {
+        if (started && started.platform === 'linux') {
+          console.log("[NativeCapture] PulseAudio Linux routing started:", started.sinkName);
+          audioTracks[0].stop();
+          stream.removeTrack(audioTracks[0]);
+
+          try {
+            const paStream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                deviceId: started.sinkName
+              }
+            });
+            const paAudioTrack = paStream.getAudioTracks()[0];
+            
+            const stopNativeCapture = () => {
+              console.log("[NativeCapture] Stopping Linux capture...");
+              ipcRenderer.invoke('stop-native-audio');
+              paAudioTrack.stop();
+            };
+
+            const originalTrackStop = paAudioTrack.stop.bind(paAudioTrack);
+            paAudioTrack.stop = () => {
+              stopNativeCapture();
+              originalTrackStop();
+            };
+
+            const videoTracks = stream.getVideoTracks();
+            if (videoTracks.length > 0) {
+              videoTracks[0].addEventListener('ended', () => {
+                stopNativeCapture();
+              });
+            }
+
+            stream.addTrack(paAudioTrack);
+            console.log("[NativeCapture] Added PulseAudio virtual track to stream!");
+          } catch (e) {
+            console.error("[NativeCapture] Failed to capture PulseAudio sink via getUserMedia:", e);
+          }
+        } else if (started) {
           console.log("[NativeCapture] Native WASAPI started successfully. Stopping default loopback track to prevent echo.");
           audioTracks[0].stop();
           stream.removeTrack(audioTracks[0]);
@@ -121,7 +158,7 @@ if (typeof MediaDevices !== 'undefined' && MediaDevices.prototype.getDisplayMedi
           stream.addTrack(generator);
           console.log("[NativeCapture] Added native audio track to stream!");
         } else {
-          console.log("[NativeCapture] WASAPI returned false. Falling back to default Electron loopback.");
+          console.log("[NativeCapture] Native capture returned false. Falling back to default Electron loopback.");
         }
       } catch (err) {
         console.error("[NativeCapture] IPC error during native capture start:", err);

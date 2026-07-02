@@ -398,18 +398,31 @@ ipcMain.on("close", () => {
 });
 
 ipcMain.handle("start-native-audio", (event) => {
+  const sourceId = global.lastSelectedSource || "";
+  console.log("start-native-audio invoked. Selected source:", sourceId);
+
+  if (process.platform === "linux") {
+    try {
+      const { setupLinuxAudio } = require('./linux-audio');
+      return setupLinuxAudio(sourceId);
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  }
+
+  if (process.platform === "darwin") {
+    return false; // macOS için direkt web apilerine bırak
+  }
+
   if (!captureModule) return false;
 
-  const sourceId = global.lastSelectedSource || "";
-  
   // Find the actual Audio Service PID to exclude Topluyo's audio perfectly
   const { app } = require('electron');
   const metrics = app.getAppMetrics();
   const audioService = metrics.find(m => m.type === 'Utility' && m.name === 'Audio Service');
   let targetPid = audioService ? audioService.pid : process.pid; 
   let isIncludeMode = false;   // Default: Exclude Topluyo (Screen Share)
-
-  console.log("start-native-audio invoked. Selected source:", sourceId);
 
   if (sourceId.startsWith("window:")) {
     // e.g., "window:1575868:0"
@@ -448,6 +461,13 @@ ipcMain.handle("start-native-audio", (event) => {
 });
 
 ipcMain.handle("stop-native-audio", () => {
+  if (process.platform === "linux") {
+    try {
+      const { cleanupLinuxAudio } = require('./linux-audio');
+      cleanupLinuxAudio();
+    } catch (e) {}
+  }
+  
   if (captureModule) {
     captureModule.stopCapture();
   }

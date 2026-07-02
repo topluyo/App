@@ -39,11 +39,13 @@ const getAllSources = async () => {
 async function createStreamWindow(_, callback) {
   let callbackcalled = false;
   const win = new BrowserWindow({
-    width: 620,
-    height: 400,
+    width: 900,
+    height: 600,
+    resizable: false,
     autoHideMenuBar: true,
     icon: path.join(app.getAppPath(), "topluyo.png"),
     webPreferences: {
+      devTools: false,
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false, // Güvenlik için false
@@ -172,6 +174,7 @@ function ossWindow(){
     autoHideMenuBar: true,
     icon: path.join(app.getAppPath(), "topluyo.png"),
     webPreferences: {
+      devTools: false,
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,

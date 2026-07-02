@@ -29,6 +29,7 @@ function createMainWindow(windowstate, url) {
     backgroundColor: "#ffffff",
     icon: path.join(__dirname, "topluyo.png"),
     webPreferences: {
+      devTools: false,
       contextIsolation: false,
       nodeIntegration: true,
       nodeIntegrationInSubFrames: true,

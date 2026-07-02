@@ -7,11 +7,15 @@ const config = {
   "files": [
     "build/**/*",
     "node_modules/**/*",
-    "!node_modules/uiohook-napi/**/*",
+    "native/topluyo-capture/build/Release/*.node",
     "*.html",
     "icons/*",
     "*.rtf",
     "*.js"
+  ],
+  "asarUnpack": [
+    "node_modules/topluyo-capture/build/Release/*.node",
+    "native/topluyo-capture/build/Release/*.node"
   ],
   "protocols": [
     {

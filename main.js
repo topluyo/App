@@ -7,7 +7,7 @@ const path = require("path");
 
 let captureModule = null;
 try {
-  captureModule = require("./native/topluyo-capture");
+  captureModule = require("electron-native-screenshare");
 } catch (e) {
   console.log("Native capture module not available yet:", e.message);
 }
@@ -401,21 +401,10 @@ ipcMain.handle("start-native-audio", (event) => {
   const sourceId = global.lastSelectedSource || "";
   console.log("start-native-audio invoked. Selected source:", sourceId);
 
-  if (process.platform === "linux") {
-    try {
-      const { setupLinuxAudio } = require('./linux-audio');
-      return setupLinuxAudio(sourceId);
-    } catch (e) {
-      console.error(e);
-      return false;
-    }
+  if (!captureModule || (captureModule.isAvailable && !captureModule.isAvailable())) {
+    console.warn("Native capture module not available:", captureModule && captureModule.getLoadError ? captureModule.getLoadError() : "Not loaded");
+    return false;
   }
-
-  if (process.platform === "darwin") {
-    return false; // macOS için direkt web apilerine bırak
-  }
-
-  if (!captureModule) return false;
 
   // Find the actual Audio Service PID to exclude Topluyo's audio perfectly
   const { app } = require('electron');
@@ -429,7 +418,7 @@ ipcMain.handle("start-native-audio", (event) => {
     const parts = sourceId.split(":");
     if (parts.length >= 2) {
       const hwnd = parseInt(parts[1], 10);
-      const pid = captureModule.getPidFromHwnd(hwnd);
+      const pid = captureModule.getPidFromWindowHandle ? captureModule.getPidFromWindowHandle(hwnd) : 0;
       if (pid > 0) {
         targetPid = pid;
         isIncludeMode = true; // Only capture this application
@@ -440,7 +429,7 @@ ipcMain.handle("start-native-audio", (event) => {
     console.log(`Screen Capture Mode: Excluding Topluyo PID=${targetPid} to prevent echo.`);
   }
 
-  captureModule.stopCapture();
+  if (captureModule.stopCapture) captureModule.stopCapture();
 
   try {
     return captureModule.startCapture(targetPid, isIncludeMode, (buffer, meta) => {
@@ -455,20 +444,13 @@ ipcMain.handle("start-native-audio", (event) => {
       }
     });
   } catch (err) {
-    console.error("Native WASAPI failed to start:", err);
+    console.error("Native Audio Capture failed to start:", err);
     return false; // Tells preload.js to fallback to Electron loopback
   }
 });
 
 ipcMain.handle("stop-native-audio", () => {
-  if (process.platform === "linux") {
-    try {
-      const { cleanupLinuxAudio } = require('./linux-audio');
-      cleanupLinuxAudio();
-    } catch (e) {}
-  }
-  
-  if (captureModule) {
+  if (captureModule && captureModule.stopCapture) {
     captureModule.stopCapture();
   }
   return true;

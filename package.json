@@ -25,11 +25,9 @@
   },
   "dependencies": {
     "electron-log": "^5.4.1",
+    "electron-native-screenshare": "^1.0.0",
     "electron-updater": "^6.3.9",
     "electron-window-state": "^5.0.3"
-  },
-  "optionalDependencies": {
-    "topluyo-capture": "file:./native/topluyo-capture"
   },
   "build": {
     "appId": "com.topluyo.app",
@@ -40,15 +38,14 @@
     "files": [
       "build/**/*",
       "node_modules/**/*",
-      "native/topluyo-capture/build/Release/*.node",
+      "node_modules/electron-native-screenshare/build/Release/*.node",
       "*.html",
       "icons/*",
       "*.rtf",
       "*.js"
     ],
     "asarUnpack": [
-      "node_modules/topluyo-capture/build/Release/*.node",
-      "native/topluyo-capture/build/Release/*.node"
+      "node_modules/electron-native-screenshare/build/Release/*.node"
     ],
     "protocols": [
       {

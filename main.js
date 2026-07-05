@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, dialog, Tray, Menu } = require("electron");
 const windowStateKeeper = require("electron-window-state");
 const { createMainWindow } = require("./Windows");
 const { openExternalLinks, ossWindow } = require("./utils");
@@ -59,6 +59,12 @@ process.on('unhandledRejection', (reason, promise) => {
 
 let mainWindow = null;
 let deeplinkingUrl = null;
+let tray = null;
+let isQuitting = false;
+
+app.on('before-quit', () => {
+  isQuitting = true;
+});
 
 const gotLock = app.requestSingleInstanceLock();
 if (process.platform === "linux") {
@@ -124,6 +130,44 @@ app.whenReady().then(() => {
     deeplinkingUrl ? deeplinkingUrl.replace("topluyo://", "/") : null
   );
 
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
+  mainWindow.on('focus', () => {
+    mainWindow.flashFrame(false);
+  });
+
+  const iconPath = path.join(app.getAppPath(), "topluyo.png");
+  tray = new Tray(iconPath);
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Uygulamayı Göster', click: () => { if(mainWindow) { mainWindow.show(); mainWindow.focus(); } } },
+    { label: 'Mikrofon Aç/Kapa', click: () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.executeJavaScript(`
+            if (typeof Topluyo !== 'undefined' && typeof Topluyo.Microphone === 'function') {
+              Topluyo.Microphone();
+            } else if (window.Topluyo && typeof window.Topluyo.Microphone === 'function') {
+              window.Topluyo.Microphone();
+            }
+          `).catch(err => console.log('Microphone toggle failed', err));
+        }
+    }},
+    { type: 'separator' },
+    { label: 'Çıkış', click: () => { isQuitting = true; app.quit(); } }
+  ]);
+  tray.setContextMenu(contextMenu);
+  tray.setToolTip('Topluyo');
+  tray.on('click', () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
   //* url handler
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -161,15 +205,20 @@ app.whenReady().then(() => {
   });
 
   // Push-to-talk initialization
+  let isPttPressed = false;
+
   uIOhook.on('keydown', (e) => {
     try {
       if (e.keycode === UiohookKey[currentPttKey]) {
-        const windows = BrowserWindow.getAllWindows();
-        windows.forEach(win => {
-          if (win.webContents && !win.webContents.isDestroyed()) {
-            win.webContents.send('ptt-status-change', true);
-          }
-        });
+        if (!isPttPressed) {
+          isPttPressed = true;
+          const windows = BrowserWindow.getAllWindows();
+          windows.forEach(win => {
+            if (win.webContents && !win.webContents.isDestroyed()) {
+              win.webContents.send('ptt-status-change', true);
+            }
+          });
+        }
       }
     } catch (err) {
       console.error("uIOhook keydown error:", err);
@@ -180,12 +229,15 @@ app.whenReady().then(() => {
   uIOhook.on('keyup', (e) => {
     try {
       if (e.keycode === UiohookKey[currentPttKey]) {
-        const windows = BrowserWindow.getAllWindows();
-        windows.forEach(win => {
-          if (win.webContents && !win.webContents.isDestroyed()) {
-            win.webContents.send('ptt-status-change', false);
-          }
-        });
+        if (isPttPressed) {
+          isPttPressed = false;
+          const windows = BrowserWindow.getAllWindows();
+          windows.forEach(win => {
+            if (win.webContents && !win.webContents.isDestroyed()) {
+              win.webContents.send('ptt-status-change', false);
+            }
+          });
+        }
       }
     } catch (err) {
       console.error("uIOhook keyup error:", err);
@@ -243,7 +295,23 @@ ipcMain.on("open-oss", () => {
 });
 
 ipcMain.on("notification:show", (event, data) => {
+  if (mainWindow && mainWindow.isFocused()) {
+    return; // Don't show notification if main window is already focused
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.flashFrame(true);
+  }
   notificationManager.enqueue(data);
+});
+
+ipcMain.on("notification:click", () => {
+  if (mainWindow) {
+    if (!mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+    mainWindow.focus();
+    mainWindow.flashFrame(false);
+  }
 });
 
 ipcMain.on("notification:close", (event) => {

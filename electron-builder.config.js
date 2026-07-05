@@ -12,7 +12,8 @@ const config = {
     "*.html",
     "icons/*",
     "*.rtf",
-    "*.js"
+    "*.js",
+    "preloads/*.js"
   ],
   "asarUnpack": [
     "node_modules/electron-native-screenshare/build/Release/*.node"

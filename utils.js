@@ -49,7 +49,7 @@ async function createStreamWindow(_, callback) {
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false, // Güvenlik için false
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preloads/screenshare.js"),
     },
   });
 
@@ -178,7 +178,7 @@ function ossWindow(){
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preloads/oss.js"),
     },
   });
 

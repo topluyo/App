@@ -6,7 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { uIOhook, UiohookKey } = require('uiohook-napi');
-
+const notificationManager = require("./NotificationManager");
 let currentPttKey = 'G'; // default
 
 function sendErrorToFrontend(error, type = 'uncaughtException') {
@@ -216,7 +216,7 @@ if (process.platform === "darwin") {
 }
 
 app.on("window-all-closed", function () {
-  try { uIOhook.stop(); } catch(e) {}
+  try { uIOhook.stop(); } catch (e) { }
   if (process.platform === "win32") {
     app.quit();
   } else {
@@ -225,13 +225,13 @@ app.on("window-all-closed", function () {
 });
 
 app.on("will-quit", () => {
-  try { uIOhook.stop(); } catch(e) {}
+  try { uIOhook.stop(); } catch (e) { }
 });
 
 ipcMain.handle('set-ptt-key', (event, newKey) => {
   if (typeof newKey !== 'string') return false;
   const upperKey = newKey.toUpperCase();
-  if(UiohookKey[upperKey] !== undefined) {
+  if (UiohookKey[upperKey] !== undefined) {
     currentPttKey = upperKey;
     return currentPttKey;
   }
@@ -240,6 +240,20 @@ ipcMain.handle('set-ptt-key', (event, newKey) => {
 
 ipcMain.on("open-oss", () => {
   ossWindow();
+});
+
+ipcMain.on("notification:show", (event, data) => {
+  notificationManager.enqueue(data);
+});
+
+ipcMain.on("notification:close", (event) => {
+  notificationManager.close(event.sender.id);
+});
+
+ipcMain.on("notification:event", (event, obj) => {
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send("notification:response", obj);
+  }
 });
 
 // OSS kütüphanelerini al
@@ -486,7 +500,7 @@ ipcMain.handle("start-native-audio", (event) => {
   if (!captureModule || (captureModule.isAvailable && !captureModule.isAvailable())) {
     const errorMsg = captureModule && captureModule.getLoadError ? captureModule.getLoadError() : "Not loaded";
     console.warn("Native capture module not available:", errorMsg);
-    
+
     // Minimum requirement: Win 10 or higher
     if (os.platform() === 'win32') {
       const releaseParts = os.release().split('.');
@@ -501,7 +515,7 @@ ipcMain.handle("start-native-audio", (event) => {
   const { app } = require('electron');
   const metrics = app.getAppMetrics();
   const audioService = metrics.find(m => m.type === 'Utility' && m.name === 'Audio Service');
-  let targetPid = audioService ? audioService.pid : process.pid; 
+  let targetPid = audioService ? audioService.pid : process.pid;
   let isIncludeMode = false;   // Default: Exclude Topluyo (Screen Share)
 
   if (sourceId.startsWith("window:")) {

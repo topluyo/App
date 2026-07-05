@@ -29,11 +29,11 @@ function createMainWindow(windowstate, url) {
     backgroundColor: "#ffffff",
     icon: path.join(__dirname, "topluyo.png"),
     webPreferences: {
-      devTools: false,
+      devTools: process.env.NODE_ENV === "development",
       contextIsolation: false,
       nodeIntegration: true,
       nodeIntegrationInSubFrames: true,
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preloads/main.js"),
     },
   });
 
@@ -94,9 +94,9 @@ function checkForUpdatesAndLoad(mainWindow) {
   autoUpdater.logger.transports.file.level = "info";
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = false;
-  if(process.env.NODE_ENV === "development") {
-      mainWindow.loadURL("https://topluyo.com");
-    }
+  if (process.env.NODE_ENV === "development") {
+    mainWindow.loadURL("https://topluyo.com");
+  }
   autoUpdater.on("checking-for-update", () => {
     console.log("Güncellemeler kontrol ediliyor...");
     autoUpdater.logger = log;

@@ -27,7 +27,8 @@
     "electron-log": "^5.4.1",
     "electron-native-screenshare": "^1.0.0",
     "electron-updater": "^6.3.9",
-    "electron-window-state": "^5.0.3"
+    "electron-window-state": "^5.0.3",
+    "uiohook-napi": "^1.5.5"
   },
   "build": {
     "appId": "com.topluyo.app",

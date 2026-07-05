@@ -5,6 +5,9 @@ const { openExternalLinks, ossWindow } = require("./utils");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const { uIOhook, UiohookKey } = require('uiohook-napi');
+
+let currentPttKey = 'G'; // default
 
 function sendErrorToFrontend(error, type = 'uncaughtException') {
   try {
@@ -156,6 +159,46 @@ app.whenReady().then(() => {
     //   return { action: "deny" };
     //}
   });
+
+  // Push-to-talk initialization
+  uIOhook.on('keydown', (e) => {
+    try {
+      if (e.keycode === UiohookKey[currentPttKey]) {
+        const windows = BrowserWindow.getAllWindows();
+        windows.forEach(win => {
+          if (win.webContents && !win.webContents.isDestroyed()) {
+            win.webContents.send('ptt-status-change', true);
+          }
+        });
+      }
+    } catch (err) {
+      console.error("uIOhook keydown error:", err);
+      sendErrorToFrontend(err, 'uIOhookError');
+    }
+  });
+
+  uIOhook.on('keyup', (e) => {
+    try {
+      if (e.keycode === UiohookKey[currentPttKey]) {
+        const windows = BrowserWindow.getAllWindows();
+        windows.forEach(win => {
+          if (win.webContents && !win.webContents.isDestroyed()) {
+            win.webContents.send('ptt-status-change', false);
+          }
+        });
+      }
+    } catch (err) {
+      console.error("uIOhook keyup error:", err);
+      sendErrorToFrontend(err, 'uIOhookError');
+    }
+  });
+
+  try {
+    uIOhook.start();
+  } catch (err) {
+    console.error("uIOhook failed to start:", err);
+    sendErrorToFrontend(err, 'uIOhookError');
+  }
 });
 
 if (process.platform === "darwin") {
@@ -173,11 +216,26 @@ if (process.platform === "darwin") {
 }
 
 app.on("window-all-closed", function () {
+  try { uIOhook.stop(); } catch(e) {}
   if (process.platform === "win32") {
     app.quit();
   } else {
     app.exit();
   }
+});
+
+app.on("will-quit", () => {
+  try { uIOhook.stop(); } catch(e) {}
+});
+
+ipcMain.handle('set-ptt-key', (event, newKey) => {
+  if (typeof newKey !== 'string') return false;
+  const upperKey = newKey.toUpperCase();
+  if(UiohookKey[upperKey] !== undefined) {
+    currentPttKey = upperKey;
+    return currentPttKey;
+  }
+  return false;
 });
 
 ipcMain.on("open-oss", () => {

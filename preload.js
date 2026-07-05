@@ -51,6 +51,14 @@ ${errorData.stack || 'No stack trace'}
       });
     }
   });
+
+  ipcRenderer.on("ptt-status-change", (event, status) => {
+    if (typeof Topluyo !== 'undefined' && typeof Topluyo.Microphone === 'function') {
+      Topluyo.Microphone(status);
+    } else if (window.Topluyo && typeof window.Topluyo.Microphone === 'function') {
+      window.Topluyo.Microphone(status);
+    }
+  });
 });
 
 // Override MediaDevices.prototype to ensure we catch ALL calls in this frame
@@ -207,6 +215,7 @@ try {
     onProgress: (callback) => ipcRenderer.on("download-progress", callback),
     getOSSLibraries: () => ipcRenderer.invoke("get-oss-libraries"),
     openExternal: (url) => ipcRenderer.invoke("open-external", url),
+    setPttKey: (key) => ipcRenderer.invoke("set-ptt-key", key),
   });
 } catch (e) {
   // If contextIsolation is false, expose directly to window
@@ -220,5 +229,6 @@ try {
     onProgress: (callback) => ipcRenderer.on("download-progress", callback),
     getOSSLibraries: () => ipcRenderer.invoke("get-oss-libraries"),
     openExternal: (url) => ipcRenderer.invoke("open-external", url),
+    setPttKey: (key) => ipcRenderer.invoke("set-ptt-key", key),
   };
 }

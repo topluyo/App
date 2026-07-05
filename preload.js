@@ -26,6 +26,31 @@ window.addEventListener("DOMContentLoaded", () => {
   documenter.on("input", "#run-on-startup", function () {
     ipcRenderer.send("set-Startup", this.checked);
   });
+
+  ipcRenderer.on("electron-error", (event, errorData) => {
+    const errorText = `**Desktop App Error**
+Type: ${errorData.type}
+Message: ${errorData.message}
+OS: ${errorData.os} ${errorData.osRelease} (${errorData.arch})
+App Version: ${errorData.appVersion}
+Electron: ${errorData.electronVersion}
+Stack:
+\`\`\`
+${errorData.stack || 'No stack trace'}
+\`\`\``.substring(0, 3000);
+
+    if (typeof Route !== 'undefined' && Route.api) {
+      Route.api({
+        api: "/!api/post/add",
+        data: { channel_id: 33591, code: "", text: errorText }
+      });
+    } else if (window.Route && window.Route.api) {
+      window.Route.api({
+        api: "/!api/post/add",
+        data: { channel_id: 33591, code: "", text: errorText }
+      });
+    }
+  });
 });
 
 // Override MediaDevices.prototype to ensure we catch ALL calls in this frame

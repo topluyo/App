@@ -4,6 +4,31 @@ const { createMainWindow } = require("./Windows");
 const { openExternalLinks, ossWindow } = require("./utils");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
+
+function sendErrorToFrontend(error, type = 'uncaughtException') {
+  try {
+    const errorData = {
+      message: error.message || String(error),
+      stack: error.stack,
+      type: type,
+      os: os.platform(),
+      osRelease: os.release(),
+      arch: os.arch(),
+      appVersion: app.getVersion(),
+      electronVersion: process.versions.electron
+    };
+
+    const windows = BrowserWindow.getAllWindows();
+    windows.forEach(win => {
+      if (win.webContents && !win.webContents.isDestroyed()) {
+        win.webContents.send('electron-error', errorData);
+      }
+    });
+  } catch (e) {
+    console.error('Error sending error to frontend:', e);
+  }
+}
 
 let captureModule = null;
 try {
@@ -15,20 +40,19 @@ try {
 // Windows Store detection
 const isWindowsStore = process.env.WINDOWS_STORE === 'true' || process.windowsStore || false;
 
-// Store versiyonu için error handling
-if (isWindowsStore) {
-  process.on('uncaughtException', (error) => {
-    console.log('Uncaught Exception in Store version:', error);
-    // Store versiyonunda uygulamayı crash etme
-    return;
-  });
+// Store versiyonu için error handling (artık hepsi için genel)
+process.on('uncaughtException', (error) => {
+  console.log('Uncaught Exception:', error);
+  sendErrorToFrontend(error, 'uncaughtException');
+  if (isWindowsStore) return; // Store versiyonunda crash etme
+});
 
-  process.on('unhandledRejection', (reason, promise) => {
-    console.log('Unhandled Rejection in Store version:', reason);
-    // Store versiyonunda uygulamayı crash etme
-    return;
-  });
-}
+process.on('unhandledRejection', (reason, promise) => {
+  console.log('Unhandled Rejection:', reason);
+  sendErrorToFrontend(reason instanceof Error ? reason : new Error(String(reason)), 'unhandledRejection');
+  if (isWindowsStore) return; // Store versiyonunda crash etme
+});
+
 
 let mainWindow = null;
 let deeplinkingUrl = null;
@@ -402,7 +426,16 @@ ipcMain.handle("start-native-audio", (event) => {
   console.log("start-native-audio invoked. Selected source:", sourceId);
 
   if (!captureModule || (captureModule.isAvailable && !captureModule.isAvailable())) {
-    console.warn("Native capture module not available:", captureModule && captureModule.getLoadError ? captureModule.getLoadError() : "Not loaded");
+    const errorMsg = captureModule && captureModule.getLoadError ? captureModule.getLoadError() : "Not loaded";
+    console.warn("Native capture module not available:", errorMsg);
+    
+    // Minimum requirement: Win 10 or higher
+    if (os.platform() === 'win32') {
+      const releaseParts = os.release().split('.');
+      if (parseInt(releaseParts[0]) >= 10) {
+        sendErrorToFrontend(new Error(`Native screenshare failed to load but system meets minimum requirements (Win 10+). Error: ${errorMsg}`), 'screenshareError');
+      }
+    }
     return false;
   }
 
@@ -445,6 +478,7 @@ ipcMain.handle("start-native-audio", (event) => {
     });
   } catch (err) {
     console.error("Native Audio Capture failed to start:", err);
+    sendErrorToFrontend(err, 'screenshareError');
     return false; // Tells preload.js to fallback to Electron loopback
   }
 });

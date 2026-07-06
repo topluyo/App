@@ -6,9 +6,17 @@ const { openExternalLinks, ossWindow } = require("./utils");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { uIOhook, UiohookKey } = require('uiohook-napi');
-const notificationManager = require("./NotificationManager");
+let uIOhook = null, UiohookKey = null;
+try {
+  const uiohookNapi = require('uiohook-napi');
+  uIOhook = uiohookNapi.uIOhook;
+  UiohookKey = uiohookNapi.UiohookKey;
+} catch (e) {
+  console.log("uiohook-napi not available (Store build etc.):", e.message);
+}
+
 let currentPttKey = 'G'; // default
+const notificationManager = require("./NotificationManager");
 
 function sendErrorToFrontend(error, type = 'uncaughtException') {
   try {
@@ -198,49 +206,51 @@ app.whenReady().then(() => {
   // Push-to-talk initialization
   let isPttPressed = false;
 
-  uIOhook.on('keydown', (e) => {
-    try {
-      if (e.keycode === UiohookKey[currentPttKey]) {
-        if (!isPttPressed) {
-          isPttPressed = true;
-          const windows = BrowserWindow.getAllWindows();
-          windows.forEach(win => {
-            if (win.webContents && !win.webContents.isDestroyed()) {
-              win.webContents.send('ptt-status-change', true);
-            }
-          });
+  if (uIOhook) {
+    uIOhook.on('keydown', (e) => {
+      try {
+        if (e.keycode === UiohookKey[currentPttKey]) {
+          if (!isPttPressed) {
+            isPttPressed = true;
+            const windows = BrowserWindow.getAllWindows();
+            windows.forEach(win => {
+              if (win.webContents && !win.webContents.isDestroyed()) {
+                win.webContents.send('ptt-status-change', true);
+              }
+            });
+          }
         }
+      } catch (err) {
+        console.error("uIOhook keydown error:", err);
+        sendErrorToFrontend(err, 'uIOhookError');
       }
+    });
+
+    uIOhook.on('keyup', (e) => {
+      try {
+        if (e.keycode === UiohookKey[currentPttKey]) {
+          if (isPttPressed) {
+            isPttPressed = false;
+            const windows = BrowserWindow.getAllWindows();
+            windows.forEach(win => {
+              if (win.webContents && !win.webContents.isDestroyed()) {
+                win.webContents.send('ptt-status-change', false);
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.error("uIOhook keyup error:", err);
+        sendErrorToFrontend(err, 'uIOhookError');
+      }
+    });
+
+    try {
+      uIOhook.start();
     } catch (err) {
-      console.error("uIOhook keydown error:", err);
+      console.error("uIOhook failed to start:", err);
       sendErrorToFrontend(err, 'uIOhookError');
     }
-  });
-
-  uIOhook.on('keyup', (e) => {
-    try {
-      if (e.keycode === UiohookKey[currentPttKey]) {
-        if (isPttPressed) {
-          isPttPressed = false;
-          const windows = BrowserWindow.getAllWindows();
-          windows.forEach(win => {
-            if (win.webContents && !win.webContents.isDestroyed()) {
-              win.webContents.send('ptt-status-change', false);
-            }
-          });
-        }
-      }
-    } catch (err) {
-      console.error("uIOhook keyup error:", err);
-      sendErrorToFrontend(err, 'uIOhookError');
-    }
-  });
-
-  try {
-    uIOhook.start();
-  } catch (err) {
-    console.error("uIOhook failed to start:", err);
-    sendErrorToFrontend(err, 'uIOhookError');
   }
 });
 
@@ -259,7 +269,7 @@ if (process.platform === "darwin") {
 }
 
 app.on("window-all-closed", function () {
-  try { uIOhook.stop(); } catch (e) { }
+  try { if (uIOhook) uIOhook.stop(); } catch (e) { }
   if (process.platform === "win32") {
     app.quit();
   } else {
@@ -268,10 +278,11 @@ app.on("window-all-closed", function () {
 });
 
 app.on("will-quit", () => {
-  try { uIOhook.stop(); } catch (e) { }
+  try { if (uIOhook) uIOhook.stop(); } catch (e) { }
 });
 
 ipcMain.handle('set-ptt-key', (event, newKey) => {
+  if (!uIOhook || !UiohookKey) return false;
   console.log('PTT new key received:', newKey);
 
   // Try to parse the input as a keycode (number)
@@ -392,6 +403,10 @@ ipcMain.on("notification:event", (event, obj) => {
   if (mainWindow && mainWindow.webContents) {
     mainWindow.webContents.send("notification:response", obj);
   }
+});
+
+ipcMain.on("get-app-version-sync", (event) => {
+  event.returnValue = app.getVersion();
 });
 
 // OSS kütüphanelerini al

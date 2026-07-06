@@ -7,7 +7,6 @@ const config = {
   "files": [
     "build/**/*",
     "node_modules/**/*",
-    "!node_modules/uiohook-napi/**/*",
     "node_modules/electron-native-screenshare/build/Release/*.node",
     "*.html",
     "icons/*",

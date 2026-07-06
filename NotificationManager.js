@@ -100,13 +100,24 @@ class NotificationManager {
       hasShadow: false,
       show: false, // Don't show until ready to slide in
       webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false,
+        nodeIntegration: false,
+        contextIsolation: true,
         preload: path.join(__dirname, 'preloads', 'notification.js')
       }
     });
 
-    win.loadURL(item.iframeUrl);
+    try {
+      const parsedUrl = new URL(item.iframeUrl);
+      // Validate that the URL is a trusted Topluyo URL
+      if (parsedUrl.origin !== "https://topluyo.com") {
+        console.warn("Blocked untrusted iframeUrl:", item.iframeUrl);
+        return;
+      }
+      win.loadURL(item.iframeUrl);
+    } catch (err) {
+      console.error("Invalid iframeUrl:", item.iframeUrl);
+      return;
+    }
 
     win.once('ready-to-show', () => {
       if (!win || win.isDestroyed()) return;

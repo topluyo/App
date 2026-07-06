@@ -24,9 +24,17 @@ try {
     isClosing = true;
     ipcRenderer.send('notification:close');
   });
+  contextBridge.exposeInMainWorld("closeWindow", () => {
+    isClosing = true;
+    ipcRenderer.send('notification:close');
+  });
   contextBridge.exposeInMainWorld("NotificationResponse", (obj) => ipcRenderer.send('notification:event', obj));
 } catch (e) {
   window.NotificationClose = () => {
+    isClosing = true;
+    ipcRenderer.send('notification:close');
+  };
+  window.closeWindow = () => {
     isClosing = true;
     ipcRenderer.send('notification:close');
   };

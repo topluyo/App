@@ -44,6 +44,12 @@ jobs:
           python3 -m ensurepip --upgrade
           python3 -m pip install --upgrade pip setuptools
 
+      - name: Install Linux build deps
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxext-dev libxtst-dev libxkbcommon-x11-dev libxkbfile-dev
+
       - name: Install dependencies
         run: npm install
 

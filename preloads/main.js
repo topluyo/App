@@ -18,6 +18,7 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   document.body.classList.add("electron-app");
+  document.body.classList.add("Electron");
 
   if (typeof documenter !== 'undefined') {
     documenter.on("input", "#run-on-startup", function () {

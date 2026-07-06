@@ -46,7 +46,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libx11-dev libxext-dev libxtst-dev libxkbcommon-x11-dev libxkbfile-dev
+          sudo apt-get install -y libx11-dev libxext-dev libxtst-dev libxkbcommon-x11-dev libxkbfile-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 
       - name: Install dependencies
         run: npm install

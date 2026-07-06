@@ -1,4 +1,4 @@
-const { BrowserWindow, session } = require("electron");
+const { BrowserWindow, session, app } = require("electron");
 const path = require("path");
 const log = require("electron-log");
 const { mediaHandler } = require("./utils");
@@ -29,11 +29,11 @@ function createMainWindow(windowstate, url) {
     backgroundColor: "#ffffff",
     icon: path.join(__dirname, "topluyo.png"),
     webPreferences: {
-      devTools: false,
+      devTools: process.env.NODE_ENV === "development",
       contextIsolation: false,
       nodeIntegration: true,
       nodeIntegrationInSubFrames: true,
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preloads/main.js"),
     },
   });
 
@@ -83,9 +83,14 @@ function createMainWindow(windowstate, url) {
 }
 
 function checkForUpdatesAndLoad(mainWindow) {
-  // Store versiyonunda auto-updater mevcut değilse direkt ana sayfayı yükle
-  if (!autoUpdater || isWindowsStore) {
-    console.log("Auto-updater not available in Store version, loading main page");
+  // Desteklenmeyen ortamlarda (Store, development/paketlenmemiş veya AppImage olmayan Linux) güncellemeyi atla
+  if (
+    !autoUpdater ||
+    isWindowsStore ||
+    !app.isPackaged ||
+    (process.platform === "linux" && !process.env.APPIMAGE)
+  ) {
+    console.log("Auto-updater not supported in this environment, loading main page...");
     mainWindow.loadURL("https://topluyo.com");
     return;
   }
@@ -94,9 +99,6 @@ function checkForUpdatesAndLoad(mainWindow) {
   autoUpdater.logger.transports.file.level = "info";
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = false;
-  if(process.env.NODE_ENV === "development") {
-      mainWindow.loadURL("https://topluyo.com");
-    }
   autoUpdater.on("checking-for-update", () => {
     console.log("Güncellemeler kontrol ediliyor...");
     autoUpdater.logger = log;

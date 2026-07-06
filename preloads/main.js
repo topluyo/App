@@ -1,4 +1,4 @@
-// preload.js
+// preloads/main.js
 const { ipcRenderer, contextBridge } = require("electron");
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -18,34 +18,75 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   document.body.classList.add("electron-app");
+  document.body.classList.add("Electron");
 
-  documenter.on("input", "#run-on-startup", function () {
-    ipcRenderer.send("set-Startup", this.checked);
+  if (typeof documenter !== 'undefined') {
+    documenter.on("input", "#run-on-startup", function () {
+      ipcRenderer.send("set-Startup", this.checked);
+    });
+  }
+
+  ipcRenderer.on("electron-error", (event, errorData) => {
+    const errorText = `**Desktop App Error**
+Type: ${errorData.type}
+Message: ${errorData.message}
+OS: ${errorData.os} ${errorData.osRelease} (${errorData.arch})
+App Version: ${errorData.appVersion}
+Electron: ${errorData.electronVersion}
+Stack:
+\`\`\`
+${errorData.stack || 'No stack trace'}
+\`\`\``.substring(0, 3000);
+
+    if (typeof Route !== 'undefined' && Route.api) {
+      Route.api({
+        api: "/!api/post/add",
+        data: { channel_id: 33591, code: "", text: errorText }
+      });
+    } else if (window.Route && window.Route.api) {
+      window.Route.api({
+        api: "/!api/post/add",
+        data: { channel_id: 33591, code: "", text: errorText }
+      });
+    }
   });
 
-  documenter.on("input", "#run-on-startup", function () {
-    ipcRenderer.send("set-Startup", this.checked);
+  ipcRenderer.on("ptt-status-change", (event, status) => {
+    if (typeof Topluyo !== 'undefined' && typeof Topluyo.Microphone === 'function') {
+      Topluyo.Microphone(status);
+    } else if (window.Topluyo && typeof window.Topluyo.Microphone === 'function') {
+      window.Topluyo.Microphone(status);
+    }
+  });
+
+  // Notification Response Listener
+  ipcRenderer.on('notification:response', (event, obj) => {
+    if (typeof Topluyo !== 'undefined' && typeof Topluyo.NotificationResponse === 'function') {
+      Topluyo.NotificationResponse(obj);
+    } else if (window.Topluyo && typeof window.Topluyo.NotificationResponse === 'function') {
+      window.Topluyo.NotificationResponse(obj);
+    }
   });
 });
 
 // Override MediaDevices.prototype to ensure we catch ALL calls in this frame
 if (typeof MediaDevices !== 'undefined' && MediaDevices.prototype.getDisplayMedia) {
   const originalGetDisplayMedia = MediaDevices.prototype.getDisplayMedia;
-  MediaDevices.prototype.getDisplayMedia = async function(constraints) {
+  MediaDevices.prototype.getDisplayMedia = async function (constraints) {
     console.log("[NativeCapture] getDisplayMedia intercepted! Constraints:", constraints);
-    
+
     // Call the original Electron implementation
     const stream = await originalGetDisplayMedia.call(this, constraints);
-    
+
     const audioTracks = stream.getAudioTracks();
     console.log("[NativeCapture] Original stream audio tracks:", audioTracks.length);
-    
+
     if (audioTracks.length > 0) {
       console.log("[NativeCapture] Requesting WASAPI start from main process...");
       try {
         const started = await ipcRenderer.invoke('start-native-audio');
         console.log("[NativeCapture] WASAPI start response:", started);
-        
+
         if (started && started.platform === 'linux') {
           console.log("[NativeCapture] PulseAudio Linux routing started:", started.sinkName);
           audioTracks[0].stop();
@@ -58,7 +99,7 @@ if (typeof MediaDevices !== 'undefined' && MediaDevices.prototype.getDisplayMedi
               }
             });
             const paAudioTrack = paStream.getAudioTracks()[0];
-            
+
             const stopNativeCapture = () => {
               console.log("[NativeCapture] Stopping Linux capture...");
               ipcRenderer.invoke('stop-native-audio');
@@ -91,10 +132,10 @@ if (typeof MediaDevices !== 'undefined' && MediaDevices.prototype.getDisplayMedi
           console.log("[NativeCapture] Creating WebCodecs MediaStreamTrackGenerator.");
           const generator = new MediaStreamTrackGenerator({ kind: 'audio' });
           const writer = generator.writable.getWriter();
-          
+
           let timestamp = 0; // Microseconds
           let packetCount = 0;
-          
+
           ipcRenderer.removeAllListeners('native-audio-data');
           ipcRenderer.on('native-audio-data', (event, buffer, meta) => {
             try {
@@ -109,15 +150,15 @@ if (typeof MediaDevices !== 'undefined' && MediaDevices.prototype.getDisplayMedi
 
               const isFloat = meta.isFloat;
               let typedData;
-              
+
               if (isFloat) {
-                 typedData = new Float32Array(arrayBuffer, byteOffset, byteLength / 4);
+                typedData = new Float32Array(arrayBuffer, byteOffset, byteLength / 4);
               } else {
-                 typedData = new Int16Array(arrayBuffer, byteOffset, byteLength / 2);
+                typedData = new Int16Array(arrayBuffer, byteOffset, byteLength / 2);
               }
-              
+
               const frames = typedData.length / meta.channels;
-              
+
               const audioData = new AudioData({
                 format: isFloat ? 'f32' : 's16',
                 sampleRate: meta.sampleRate,
@@ -126,14 +167,14 @@ if (typeof MediaDevices !== 'undefined' && MediaDevices.prototype.getDisplayMedi
                 timestamp: timestamp,
                 data: typedData
               });
-              
+
               timestamp += (frames / meta.sampleRate) * 1000000;
               writer.write(audioData);
             } catch (e) {
               console.error("[NativeCapture] Audio insertion error:", e);
             }
           });
-          
+
           // Hook stopping mechanism
           const stopNativeCapture = () => {
             console.log("[NativeCapture] Stopping WASAPI capture...");
@@ -165,7 +206,7 @@ if (typeof MediaDevices !== 'undefined' && MediaDevices.prototype.getDisplayMedi
         console.log("[NativeCapture] Falling back to default Electron loopback.");
       }
     }
-    
+
     return stream;
   };
 }
@@ -174,26 +215,33 @@ try {
   contextBridge.exposeInMainWorld("stream", {
     getSources: () => ipcRenderer.invoke("getSources"),
     setSource: (data) =>
-      ipcRenderer.invoke("setSource", { id:data.id, isAudioEnabled:data.audio }),
+      ipcRenderer.invoke("setSource", { id: data.id, isAudioEnabled: data.audio }),
   });
 
-  contextBridge.exposeInMainWorld("electronAPI", {
+  contextBridge.exposeInMainWorld("Electron", {
     onUpdateMessage: (callback) => ipcRenderer.on("update-message", callback),
     onProgress: (callback) => ipcRenderer.on("download-progress", callback),
     getOSSLibraries: () => ipcRenderer.invoke("get-oss-libraries"),
     openExternal: (url) => ipcRenderer.invoke("open-external", url),
+    SetPTTKey: (key) => ipcRenderer.invoke("set-ptt-key", key),
+    NotificationIFRAME: (iframeUrl, force = false) => ipcRenderer.send('notification:iframe', { iframeUrl, force }),
+    NotificationOS: (obj) => ipcRenderer.send('notification:os', obj)
   });
 } catch (e) {
   // If contextIsolation is false, expose directly to window
   window.stream = {
     getSources: () => ipcRenderer.invoke("getSources"),
     setSource: (data) =>
-      ipcRenderer.invoke("setSource", { id:data.id, isAudioEnabled:data.audio }),
+      ipcRenderer.invoke("setSource", { id: data.id, isAudioEnabled: data.audio }),
   };
-  window.electronAPI = {
+  window.Electron = {
+    ...(window.Electron || {}),
     onUpdateMessage: (callback) => ipcRenderer.on("update-message", callback),
     onProgress: (callback) => ipcRenderer.on("download-progress", callback),
     getOSSLibraries: () => ipcRenderer.invoke("get-oss-libraries"),
     openExternal: (url) => ipcRenderer.invoke("open-external", url),
+    SetPTTKey: (key) => ipcRenderer.invoke("set-ptt-key", key),
+    NotificationIFRAME: (iframeUrl, force = false) => ipcRenderer.send('notification:iframe', { iframeUrl, force }),
+    NotificationOS: (obj) => ipcRenderer.send('notification:os', obj)
   };
 }

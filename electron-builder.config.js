@@ -7,15 +7,16 @@ const config = {
   "files": [
     "build/**/*",
     "node_modules/**/*",
-    "native/topluyo-capture/build/Release/*.node",
+    "!node_modules/uiohook-napi/**/*",
+    "node_modules/electron-native-screenshare/build/Release/*.node",
     "*.html",
     "icons/*",
     "*.rtf",
-    "*.js"
+    "*.js",
+    "preloads/*.js"
   ],
   "asarUnpack": [
-    "node_modules/topluyo-capture/build/Release/*.node",
-    "native/topluyo-capture/build/Release/*.node"
+    "node_modules/electron-native-screenshare/build/Release/*.node"
   ],
   "protocols": [
     {

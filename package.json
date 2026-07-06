@@ -1,11 +1,11 @@
 {
   "name": "topluyo",
-  "version": "2026.7.204",
+  "version": "2026.7.623",
   "description": "Topluyo",
   "main": "main.js",
   "scripts": {
-    "start": "NODE_ENV=production electron .",
-    "dev": "set NODE_ENV=development&& electron .",
+    "start": "ELECTRON_DISABLE_SANDBOX=1 NODE_ENV=production electron . --disable-dev-shm-usage --no-sandbox",
+    "dev": "ELECTRON_DISABLE_SANDBOX=1 NODE_ENV=development electron . --disable-dev-shm-usage --no-sandbox",
     "start:win": "set NODE_ENV=production&& electron .",
     "dev:win": "set NODE_ENV=development&& electron .",
     "devbuild": "set NODE_ENV=development&& electron-builder --win --x64 --config.win.target=nsis",
@@ -25,11 +25,10 @@
   },
   "dependencies": {
     "electron-log": "^5.4.1",
+    "electron-native-screenshare": "1.0.1",
     "electron-updater": "^6.3.9",
-    "electron-window-state": "^5.0.3"
-  },
-  "optionalDependencies": {
-    "topluyo-capture": "file:./native/topluyo-capture"
+    "electron-window-state": "^5.0.3",
+    "uiohook-napi": "^1.5.5"
   },
   "build": {
     "appId": "com.topluyo.app",
@@ -40,15 +39,15 @@
     "files": [
       "build/**/*",
       "node_modules/**/*",
-      "native/topluyo-capture/build/Release/*.node",
+      "node_modules/electron-native-screenshare/build/Release/*.node",
       "*.html",
       "icons/*",
       "*.rtf",
-      "*.js"
+      "*.js",
+      "preloads/*.js"
     ],
     "asarUnpack": [
-      "node_modules/topluyo-capture/build/Release/*.node",
-      "native/topluyo-capture/build/Release/*.node"
+      "node_modules/electron-native-screenshare/build/Release/*.node"
     ],
     "protocols": [
       {
@@ -144,5 +143,10 @@
         "repo": "App"
       }
     ]
+  },
+  "allowScripts": {
+    "electron-native-screenshare@1.0.1": true,
+    "electron-winstaller@5.4.0": true,
+    "uiohook-napi@1.5.5": true
   }
 }

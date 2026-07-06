@@ -1,13 +1,42 @@
-const { app, BrowserWindow, ipcMain, shell, dialog } = require("electron");
+if (process.platform === "linux") { process.env.ELECTRON_DISABLE_SANDBOX = "1"; }
+const { app, BrowserWindow, ipcMain, shell, dialog, Tray, Menu } = require("electron");
 const windowStateKeeper = require("electron-window-state");
 const { createMainWindow } = require("./Windows");
 const { openExternalLinks, ossWindow } = require("./utils");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
+const { uIOhook, UiohookKey } = require('uiohook-napi');
+const notificationManager = require("./NotificationManager");
+let currentPttKey = 'G'; // default
+
+function sendErrorToFrontend(error, type = 'uncaughtException') {
+  try {
+    const errorData = {
+      message: error.message || String(error),
+      stack: error.stack,
+      type: type,
+      os: os.platform(),
+      osRelease: os.release(),
+      arch: os.arch(),
+      appVersion: app.getVersion(),
+      electronVersion: process.versions.electron
+    };
+
+    const windows = BrowserWindow.getAllWindows();
+    windows.forEach(win => {
+      if (win.webContents && !win.webContents.isDestroyed()) {
+        win.webContents.send('electron-error', errorData);
+      }
+    });
+  } catch (e) {
+    console.error('Error sending error to frontend:', e);
+  }
+}
 
 let captureModule = null;
 try {
-  captureModule = require("./native/topluyo-capture");
+  captureModule = require("electron-native-screenshare");
 } catch (e) {
   console.log("Native capture module not available yet:", e.message);
 }
@@ -15,23 +44,28 @@ try {
 // Windows Store detection
 const isWindowsStore = process.env.WINDOWS_STORE === 'true' || process.windowsStore || false;
 
-// Store versiyonu için error handling
-if (isWindowsStore) {
-  process.on('uncaughtException', (error) => {
-    console.log('Uncaught Exception in Store version:', error);
-    // Store versiyonunda uygulamayı crash etme
-    return;
-  });
+// Store versiyonu için error handling (artık hepsi için genel)
+process.on('uncaughtException', (error) => {
+  console.log('Uncaught Exception:', error);
+  sendErrorToFrontend(error, 'uncaughtException');
+  if (isWindowsStore) return; // Store versiyonunda crash etme
+});
 
-  process.on('unhandledRejection', (reason, promise) => {
-    console.log('Unhandled Rejection in Store version:', reason);
-    // Store versiyonunda uygulamayı crash etme
-    return;
-  });
-}
+process.on('unhandledRejection', (reason, promise) => {
+  console.log('Unhandled Rejection:', reason);
+  sendErrorToFrontend(reason instanceof Error ? reason : new Error(String(reason)), 'unhandledRejection');
+  if (isWindowsStore) return; // Store versiyonunda crash etme
+});
+
 
 let mainWindow = null;
 let deeplinkingUrl = null;
+let tray = null;
+let isQuitting = false;
+
+app.on('before-quit', () => {
+  isQuitting = true;
+});
 
 const gotLock = app.requestSingleInstanceLock();
 if (process.platform === "linux") {
@@ -39,6 +73,7 @@ if (process.platform === "linux") {
   app.commandLine.appendSwitch("disable-gpu");
   app.commandLine.appendSwitch("disable-software-rasterizer");
   app.commandLine.appendSwitch("no-sandbox");
+  app.commandLine.appendSwitch("disable-dev-shm-usage");
 }
 
 if (process.platform === "win32") {
@@ -97,6 +132,33 @@ app.whenReady().then(() => {
     deeplinkingUrl ? deeplinkingUrl.replace("topluyo://", "/") : null
   );
 
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
+  mainWindow.on('focus', () => {
+    mainWindow.flashFrame(false);
+  });
+
+  const iconPath = path.join(app.getAppPath(), "topluyo.png");
+  tray = new Tray(iconPath);
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Uygulamayı Göster', click: () => { if (mainWindow) { mainWindow.show(); mainWindow.focus(); } } },
+    { type: 'separator' },
+    { label: 'Çıkış', click: () => { isQuitting = true; app.quit(); } }
+  ]);
+  tray.setContextMenu(contextMenu);
+  tray.setToolTip('Topluyo');
+  tray.on('click', () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
   //* url handler
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -132,6 +194,54 @@ app.whenReady().then(() => {
     //   return { action: "deny" };
     //}
   });
+
+  // Push-to-talk initialization
+  let isPttPressed = false;
+
+  uIOhook.on('keydown', (e) => {
+    try {
+      if (e.keycode === UiohookKey[currentPttKey]) {
+        if (!isPttPressed) {
+          isPttPressed = true;
+          const windows = BrowserWindow.getAllWindows();
+          windows.forEach(win => {
+            if (win.webContents && !win.webContents.isDestroyed()) {
+              win.webContents.send('ptt-status-change', true);
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error("uIOhook keydown error:", err);
+      sendErrorToFrontend(err, 'uIOhookError');
+    }
+  });
+
+  uIOhook.on('keyup', (e) => {
+    try {
+      if (e.keycode === UiohookKey[currentPttKey]) {
+        if (isPttPressed) {
+          isPttPressed = false;
+          const windows = BrowserWindow.getAllWindows();
+          windows.forEach(win => {
+            if (win.webContents && !win.webContents.isDestroyed()) {
+              win.webContents.send('ptt-status-change', false);
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error("uIOhook keyup error:", err);
+      sendErrorToFrontend(err, 'uIOhookError');
+    }
+  });
+
+  try {
+    uIOhook.start();
+  } catch (err) {
+    console.error("uIOhook failed to start:", err);
+    sendErrorToFrontend(err, 'uIOhookError');
+  }
 });
 
 if (process.platform === "darwin") {
@@ -149,6 +259,7 @@ if (process.platform === "darwin") {
 }
 
 app.on("window-all-closed", function () {
+  try { uIOhook.stop(); } catch (e) { }
   if (process.platform === "win32") {
     app.quit();
   } else {
@@ -156,8 +267,131 @@ app.on("window-all-closed", function () {
   }
 });
 
+app.on("will-quit", () => {
+  try { uIOhook.stop(); } catch (e) { }
+});
+
+ipcMain.handle('set-ptt-key', (event, newKey) => {
+  console.log('PTT new key received:', newKey);
+
+  // Try to parse the input as a keycode (number)
+  let keyCode = typeof newKey === 'number' ? newKey : parseInt(newKey, 10);
+
+  if (!isNaN(keyCode)) {
+    // Map JS standard KeyboardEvent keyCode to UiohookKey key names
+    const jsKeyCodeToUiohookKeyName = {
+      8: 'Backspace',
+      9: 'Tab',
+      13: 'Enter',
+      16: 'Shift',
+      17: 'Ctrl',
+      18: 'Alt',
+      20: 'CapsLock',
+      27: 'Escape',
+      32: 'Space',
+      33: 'PageUp',
+      34: 'PageDown',
+      35: 'End',
+      36: 'Home',
+      37: 'ArrowLeft',
+      38: 'ArrowUp',
+      39: 'ArrowRight',
+      40: 'ArrowDown',
+      45: 'Insert',
+      46: 'Delete',
+      48: '0', 49: '1', 50: '2', 51: '3', 52: '4',
+      53: '5', 54: '6', 55: '7', 56: '8', 57: '9',
+      65: 'A', 66: 'B', 67: 'C', 68: 'D', 69: 'E', 70: 'F', 71: 'G', 72: 'H',
+      73: 'I', 74: 'J', 75: 'K', 76: 'L', 77: 'M', 78: 'N', 79: 'O', 80: 'P',
+      81: 'Q', 82: 'R', 83: 'S', 84: 'T', 85: 'U', 86: 'V', 87: 'W', 88: 'X',
+      89: 'Y', 90: 'Z',
+      96: 'Numpad0', 97: 'Numpad1', 98: 'Numpad2', 99: 'Numpad3', 100: 'Numpad4',
+      101: 'Numpad5', 102: 'Numpad6', 103: 'Numpad7', 104: 'Numpad8', 105: 'Numpad9',
+      106: 'NumpadMultiply', 107: 'NumpadAdd', 109: 'NumpadSubtract',
+      110: 'NumpadDecimal', 111: 'NumpadDivide',
+      112: 'F1', 113: 'F2', 114: 'F3', 115: 'F4', 116: 'F5', 117: 'F6',
+      118: 'F7', 119: 'F8', 120: 'F9', 121: 'F10', 122: 'F11', 123: 'F12',
+      186: 'Semicolon', 187: 'Equal', 188: 'Comma', 189: 'Minus', 190: 'Period',
+      191: 'Slash', 192: 'Backquote', 219: 'BracketLeft', 220: 'Backslash',
+      221: 'BracketRight', 222: 'Quote'
+    };
+
+    const matchedKeyName = jsKeyCodeToUiohookKeyName[keyCode];
+    if (matchedKeyName && UiohookKey[matchedKeyName] !== undefined) {
+      currentPttKey = matchedKeyName;
+      console.log('PTT key set from JS keyCode:', keyCode, '-> UiohookKey:', currentPttKey, '(Code:', UiohookKey[currentPttKey], ')');
+      return currentPttKey;
+    }
+
+    // Fallback: Check if the keycode is already a native uiohook keycode
+    const matchedNativeKey = Object.keys(UiohookKey).find(k => UiohookKey[k] === keyCode);
+    if (matchedNativeKey) {
+      currentPttKey = matchedNativeKey;
+      console.log('PTT key set from native keycode:', keyCode, '-> UiohookKey:', currentPttKey);
+      return currentPttKey;
+    }
+  } else if (typeof newKey === 'string') {
+    // Fallback: Normalize string inputs (e.g. "KeyG" -> "G", "Digit1" -> "1")
+    let upperKey = newKey.toUpperCase();
+    if (upperKey.startsWith("KEY") && upperKey.length === 4) {
+      upperKey = upperKey.slice(3);
+    } else if (upperKey.startsWith("DIGIT") && upperKey.length === 6) {
+      upperKey = upperKey.slice(5);
+    }
+
+    const matchedKeyName = Object.keys(UiohookKey).find(k => k.toUpperCase() === upperKey);
+    if (matchedKeyName) {
+      currentPttKey = matchedKeyName;
+      console.log('PTT key set from string:', newKey, '-> UiohookKey:', currentPttKey, '(Code:', UiohookKey[currentPttKey], ')');
+      return currentPttKey;
+    }
+  }
+
+  console.log('PTT key change failed for:', newKey);
+  return false;
+});
+
 ipcMain.on("open-oss", () => {
   ossWindow();
+});
+
+ipcMain.on("notification:iframe", (event, data) => {
+  const { iframeUrl, force } = data;
+  const isFocused = mainWindow && mainWindow.isFocused();
+
+  if (!force && isFocused) {
+    return; // Don't show if not forced and window is focused
+  }
+
+  if (mainWindow && !mainWindow.isDestroyed() && !isFocused) {
+    mainWindow.flashFrame(true);
+  }
+
+  notificationManager.enqueue(iframeUrl);
+});
+
+ipcMain.on("notification:os", (event, obj) => {
+  notificationManager.enqueueOS(obj);
+});
+
+ipcMain.on("notification:click", () => {
+  if (mainWindow) {
+    if (!mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+    mainWindow.focus();
+    mainWindow.flashFrame(false);
+  }
+});
+
+ipcMain.on("notification:close", (event) => {
+  notificationManager.close(event.sender.id);
+});
+
+ipcMain.on("notification:event", (event, obj) => {
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send("notification:response", obj);
+  }
 });
 
 // OSS kütüphanelerini al
@@ -401,27 +635,25 @@ ipcMain.handle("start-native-audio", (event) => {
   const sourceId = global.lastSelectedSource || "";
   console.log("start-native-audio invoked. Selected source:", sourceId);
 
-  if (process.platform === "linux") {
-    try {
-      const { setupLinuxAudio } = require('./linux-audio');
-      return setupLinuxAudio(sourceId);
-    } catch (e) {
-      console.error(e);
-      return false;
+  if (!captureModule || (captureModule.isAvailable && !captureModule.isAvailable())) {
+    const errorMsg = captureModule && captureModule.getLoadError ? captureModule.getLoadError() : "Not loaded";
+    console.warn("Native capture module not available:", errorMsg);
+
+    // Minimum requirement: Win 10 or higher
+    if (os.platform() === 'win32') {
+      const releaseParts = os.release().split('.');
+      if (parseInt(releaseParts[0]) >= 10) {
+        sendErrorToFrontend(new Error(`Native screenshare failed to load but system meets minimum requirements (Win 10+). Error: ${errorMsg}`), 'screenshareError');
+      }
     }
+    return false;
   }
-
-  if (process.platform === "darwin") {
-    return false; // macOS için direkt web apilerine bırak
-  }
-
-  if (!captureModule) return false;
 
   // Find the actual Audio Service PID to exclude Topluyo's audio perfectly
   const { app } = require('electron');
   const metrics = app.getAppMetrics();
   const audioService = metrics.find(m => m.type === 'Utility' && m.name === 'Audio Service');
-  let targetPid = audioService ? audioService.pid : process.pid; 
+  let targetPid = audioService ? audioService.pid : process.pid;
   let isIncludeMode = false;   // Default: Exclude Topluyo (Screen Share)
 
   if (sourceId.startsWith("window:")) {
@@ -429,7 +661,7 @@ ipcMain.handle("start-native-audio", (event) => {
     const parts = sourceId.split(":");
     if (parts.length >= 2) {
       const hwnd = parseInt(parts[1], 10);
-      const pid = captureModule.getPidFromHwnd(hwnd);
+      const pid = captureModule.getPidFromWindowHandle ? captureModule.getPidFromWindowHandle(hwnd) : 0;
       if (pid > 0) {
         targetPid = pid;
         isIncludeMode = true; // Only capture this application
@@ -440,7 +672,7 @@ ipcMain.handle("start-native-audio", (event) => {
     console.log(`Screen Capture Mode: Excluding Topluyo PID=${targetPid} to prevent echo.`);
   }
 
-  captureModule.stopCapture();
+  if (captureModule.stopCapture) captureModule.stopCapture();
 
   try {
     return captureModule.startCapture(targetPid, isIncludeMode, (buffer, meta) => {
@@ -455,20 +687,14 @@ ipcMain.handle("start-native-audio", (event) => {
       }
     });
   } catch (err) {
-    console.error("Native WASAPI failed to start:", err);
+    console.error("Native Audio Capture failed to start:", err);
+    sendErrorToFrontend(err, 'screenshareError');
     return false; // Tells preload.js to fallback to Electron loopback
   }
 });
 
 ipcMain.handle("stop-native-audio", () => {
-  if (process.platform === "linux") {
-    try {
-      const { cleanupLinuxAudio } = require('./linux-audio');
-      cleanupLinuxAudio();
-    } catch (e) {}
-  }
-  
-  if (captureModule) {
+  if (captureModule && captureModule.stopCapture) {
     captureModule.stopCapture();
   }
   return true;

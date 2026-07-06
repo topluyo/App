@@ -9,13 +9,15 @@ const config = {
     "node_modules/**/*",
     "node_modules/electron-native-screenshare/build/Release/*.node",
     "*.html",
+    "*.png",
     "icons/*",
     "*.rtf",
     "*.js",
     "preloads/*.js"
   ],
   "asarUnpack": [
-    "node_modules/electron-native-screenshare/build/Release/*.node"
+    "node_modules/electron-native-screenshare/build/Release/*.node",
+    "node_modules/uiohook-napi/prebuilds/**/*.node"
   ],
   "protocols": [
     {

@@ -294,14 +294,23 @@ ipcMain.on("open-oss", () => {
   ossWindow();
 });
 
-ipcMain.on("notification:show", (event, data) => {
-  if (mainWindow && mainWindow.isFocused()) {
-    return; // Don't show notification if main window is already focused
+ipcMain.on("notification:iframe", (event, data) => {
+  const { iframeUrl, force } = data;
+  const isFocused = mainWindow && mainWindow.isFocused();
+
+  if (!force && isFocused) {
+    return; // Don't show if not forced and window is focused
   }
-  if (mainWindow && !mainWindow.isDestroyed()) {
+  
+  if (mainWindow && !mainWindow.isDestroyed() && !isFocused) {
     mainWindow.flashFrame(true);
   }
-  notificationManager.enqueue(data);
+  
+  notificationManager.enqueue(iframeUrl);
+});
+
+ipcMain.on("notification:os", (event, obj) => {
+  notificationManager.enqueueOS(obj);
 });
 
 ipcMain.on("notification:click", () => {

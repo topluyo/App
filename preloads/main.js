@@ -223,7 +223,8 @@ try {
     getOSSLibraries: () => ipcRenderer.invoke("get-oss-libraries"),
     openExternal: (url) => ipcRenderer.invoke("open-external", url),
     SetPTTKey: (key) => ipcRenderer.invoke("set-ptt-key", key),
-    Notification: (iframeUrl, nativeOpts) => ipcRenderer.send('notification:show', { iframeUrl, nativeOpts })
+    NotificationIFRAME: (iframeUrl, force = false) => ipcRenderer.send('notification:iframe', { iframeUrl, force }),
+    NotificationOS: (obj) => ipcRenderer.send('notification:os', obj)
   });
 } catch (e) {
   // If contextIsolation is false, expose directly to window
@@ -239,6 +240,7 @@ try {
     getOSSLibraries: () => ipcRenderer.invoke("get-oss-libraries"),
     openExternal: (url) => ipcRenderer.invoke("open-external", url),
     SetPTTKey: (key) => ipcRenderer.invoke("set-ptt-key", key),
-    Notification: (iframeUrl, nativeOpts) => ipcRenderer.send('notification:show', { iframeUrl, nativeOpts })
+    NotificationIFRAME: (iframeUrl, force = false) => ipcRenderer.send('notification:iframe', { iframeUrl, force }),
+    NotificationOS: (obj) => ipcRenderer.send('notification:os', obj)
   };
 }

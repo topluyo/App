@@ -8,15 +8,11 @@ class NotificationManager {
     this.maxVisible = 3;
     this.width = 320;
     this.height = 100;
-    this.margin = 10;
-    this.autoCloseMs = 3000; // 3 seconds auto-close
+    this.margin = 0;
+    this.autoCloseMs = 30000; // 30 seconds auto-close
   }
 
-  enqueue(data) {
-    const iframeUrl = typeof data === 'string' ? data : data.iframeUrl;
-    const nativeOpts = typeof data === 'object' ? data.nativeOpts : null;
-
-    // Show Native OS Notification if requested and supported
+  enqueueOS(nativeOpts) {
     if (nativeOpts && Notification.isSupported()) {
       const notificationParams = {
         title: nativeOpts.title || 'Topluyo',
@@ -31,7 +27,9 @@ class NotificationManager {
       const nativeNotif = new Notification(notificationParams);
       nativeNotif.show();
     }
+  }
 
+  enqueue(iframeUrl) {
     if (!iframeUrl) return;
 
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 5);

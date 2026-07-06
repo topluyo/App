@@ -43,15 +43,20 @@ function registerProtocol() {
   const desktopPath = path.join(os.homedir(), ".local/share/applications/topluyo.desktop");
   const appPath = process.env.APPIMAGE || process.execPath;
 
+  const iconPath = process.env.APPIMAGE
+    ? path.join(process.env.APPDIR, ".DirIcon")
+    : path.join(__dirname, "topluyo.png");
+
   const desktopEntry = `[Desktop Entry]
 Name=Topluyo
-Exec=sh -c '"${appPath}" --no-sandbox %u'
+Exec=env ELECTRON_DISABLE_SANDBOX=1 sh -c '"${appPath}" --no-sandbox --disable-dev-shm-usage %u'
 Type=Application
 Terminal=false
 MimeType=x-scheme-handler/topluyo;
 Categories=Network;Chat;
 NoDisplay=false
 StartupWMClass=Topluyo
+Icon=${iconPath}
 `;
 
   try {
@@ -66,7 +71,7 @@ StartupWMClass=Topluyo
 }
 
 if (process.platform === "linux") {
-  fixChromeSandbox();
+  // fixChromeSandbox(); // Not needed when using --no-sandbox
   registerProtocol();
-    ensureShmExists();
+  // ensureShmExists(); // Not needed when using --disable-dev-shm-usage
 }

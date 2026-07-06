@@ -1,3 +1,4 @@
+if (process.platform === "linux") { process.env.ELECTRON_DISABLE_SANDBOX = "1"; }
 const { app, BrowserWindow, ipcMain, shell, dialog, Tray, Menu } = require("electron");
 const windowStateKeeper = require("electron-window-state");
 const { createMainWindow } = require("./Windows");
@@ -72,6 +73,7 @@ if (process.platform === "linux") {
   app.commandLine.appendSwitch("disable-gpu");
   app.commandLine.appendSwitch("disable-software-rasterizer");
   app.commandLine.appendSwitch("no-sandbox");
+  app.commandLine.appendSwitch("disable-dev-shm-usage");
 }
 
 if (process.platform === "win32") {
@@ -271,10 +273,10 @@ app.on("will-quit", () => {
 
 ipcMain.handle('set-ptt-key', (event, newKey) => {
   console.log('PTT new key received:', newKey);
-  
+
   // Try to parse the input as a keycode (number)
   let keyCode = typeof newKey === 'number' ? newKey : parseInt(newKey, 10);
-  
+
   if (!isNaN(keyCode)) {
     // Map JS standard KeyboardEvent keyCode to UiohookKey key names
     const jsKeyCodeToUiohookKeyName = {
@@ -305,7 +307,7 @@ ipcMain.handle('set-ptt-key', (event, newKey) => {
       89: 'Y', 90: 'Z',
       96: 'Numpad0', 97: 'Numpad1', 98: 'Numpad2', 99: 'Numpad3', 100: 'Numpad4',
       101: 'Numpad5', 102: 'Numpad6', 103: 'Numpad7', 104: 'Numpad8', 105: 'Numpad9',
-      106: 'NumpadMultiply', 107: 'NumpadAdd', 109: 'NumpadSubtract', 
+      106: 'NumpadMultiply', 107: 'NumpadAdd', 109: 'NumpadSubtract',
       110: 'NumpadDecimal', 111: 'NumpadDivide',
       112: 'F1', 113: 'F2', 114: 'F3', 115: 'F4', 116: 'F5', 117: 'F6',
       118: 'F7', 119: 'F8', 120: 'F9', 121: 'F10', 122: 'F11', 123: 'F12',
@@ -313,14 +315,14 @@ ipcMain.handle('set-ptt-key', (event, newKey) => {
       191: 'Slash', 192: 'Backquote', 219: 'BracketLeft', 220: 'Backslash',
       221: 'BracketRight', 222: 'Quote'
     };
-    
+
     const matchedKeyName = jsKeyCodeToUiohookKeyName[keyCode];
     if (matchedKeyName && UiohookKey[matchedKeyName] !== undefined) {
       currentPttKey = matchedKeyName;
       console.log('PTT key set from JS keyCode:', keyCode, '-> UiohookKey:', currentPttKey, '(Code:', UiohookKey[currentPttKey], ')');
       return currentPttKey;
     }
-    
+
     // Fallback: Check if the keycode is already a native uiohook keycode
     const matchedNativeKey = Object.keys(UiohookKey).find(k => UiohookKey[k] === keyCode);
     if (matchedNativeKey) {
@@ -336,7 +338,7 @@ ipcMain.handle('set-ptt-key', (event, newKey) => {
     } else if (upperKey.startsWith("DIGIT") && upperKey.length === 6) {
       upperKey = upperKey.slice(5);
     }
-    
+
     const matchedKeyName = Object.keys(UiohookKey).find(k => k.toUpperCase() === upperKey);
     if (matchedKeyName) {
       currentPttKey = matchedKeyName;
@@ -344,7 +346,7 @@ ipcMain.handle('set-ptt-key', (event, newKey) => {
       return currentPttKey;
     }
   }
-  
+
   console.log('PTT key change failed for:', newKey);
   return false;
 });

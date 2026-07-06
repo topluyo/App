@@ -4,8 +4,8 @@
   "description": "Topluyo",
   "main": "main.js",
   "scripts": {
-    "start": "NODE_ENV=production electron .",
-    "dev": "set NODE_ENV=development&& electron .",
+    "start": "ELECTRON_DISABLE_SANDBOX=1 NODE_ENV=production electron . --disable-dev-shm-usage --no-sandbox",
+    "dev": "ELECTRON_DISABLE_SANDBOX=1 NODE_ENV=development electron . --disable-dev-shm-usage --no-sandbox",
     "start:win": "set NODE_ENV=production&& electron .",
     "dev:win": "set NODE_ENV=development&& electron .",
     "devbuild": "set NODE_ENV=development&& electron-builder --win --x64 --config.win.target=nsis",
@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "electron-log": "^5.4.1",
-    "electron-native-screenshare": "^1.0.0",
+    "electron-native-screenshare": "1.0.1",
     "electron-updater": "^6.3.9",
     "electron-window-state": "^5.0.3",
     "uiohook-napi": "^1.5.5"
@@ -143,5 +143,10 @@
         "repo": "App"
       }
     ]
+  },
+  "allowScripts": {
+    "electron-native-screenshare@1.0.1": true,
+    "electron-winstaller@5.4.0": true,
+    "uiohook-napi@1.5.5": true
   }
 }

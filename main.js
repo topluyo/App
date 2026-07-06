@@ -144,18 +144,7 @@ app.whenReady().then(() => {
   const iconPath = path.join(app.getAppPath(), "topluyo.png");
   tray = new Tray(iconPath);
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Uygulamayı Göster', click: () => { if(mainWindow) { mainWindow.show(); mainWindow.focus(); } } },
-    { label: 'Mikrofon Aç/Kapa', click: () => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.executeJavaScript(`
-            if (typeof Topluyo !== 'undefined' && typeof Topluyo.Microphone === 'function') {
-              Topluyo.Microphone();
-            } else if (window.Topluyo && typeof window.Topluyo.Microphone === 'function') {
-              window.Topluyo.Microphone();
-            }
-          `).catch(err => console.log('Microphone toggle failed', err));
-        }
-    }},
+    { label: 'Uygulamayı Göster', click: () => { if (mainWindow) { mainWindow.show(); mainWindow.focus(); } } },
     { type: 'separator' },
     { label: 'Çıkış', click: () => { isQuitting = true; app.quit(); } }
   ]);
@@ -281,12 +270,82 @@ app.on("will-quit", () => {
 });
 
 ipcMain.handle('set-ptt-key', (event, newKey) => {
-  if (typeof newKey !== 'string') return false;
-  const upperKey = newKey.toUpperCase();
-  if (UiohookKey[upperKey] !== undefined) {
-    currentPttKey = upperKey;
-    return currentPttKey;
+  console.log('PTT new key received:', newKey);
+  
+  // Try to parse the input as a keycode (number)
+  let keyCode = typeof newKey === 'number' ? newKey : parseInt(newKey, 10);
+  
+  if (!isNaN(keyCode)) {
+    // Map JS standard KeyboardEvent keyCode to UiohookKey key names
+    const jsKeyCodeToUiohookKeyName = {
+      8: 'Backspace',
+      9: 'Tab',
+      13: 'Enter',
+      16: 'Shift',
+      17: 'Ctrl',
+      18: 'Alt',
+      20: 'CapsLock',
+      27: 'Escape',
+      32: 'Space',
+      33: 'PageUp',
+      34: 'PageDown',
+      35: 'End',
+      36: 'Home',
+      37: 'ArrowLeft',
+      38: 'ArrowUp',
+      39: 'ArrowRight',
+      40: 'ArrowDown',
+      45: 'Insert',
+      46: 'Delete',
+      48: '0', 49: '1', 50: '2', 51: '3', 52: '4',
+      53: '5', 54: '6', 55: '7', 56: '8', 57: '9',
+      65: 'A', 66: 'B', 67: 'C', 68: 'D', 69: 'E', 70: 'F', 71: 'G', 72: 'H',
+      73: 'I', 74: 'J', 75: 'K', 76: 'L', 77: 'M', 78: 'N', 79: 'O', 80: 'P',
+      81: 'Q', 82: 'R', 83: 'S', 84: 'T', 85: 'U', 86: 'V', 87: 'W', 88: 'X',
+      89: 'Y', 90: 'Z',
+      96: 'Numpad0', 97: 'Numpad1', 98: 'Numpad2', 99: 'Numpad3', 100: 'Numpad4',
+      101: 'Numpad5', 102: 'Numpad6', 103: 'Numpad7', 104: 'Numpad8', 105: 'Numpad9',
+      106: 'NumpadMultiply', 107: 'NumpadAdd', 109: 'NumpadSubtract', 
+      110: 'NumpadDecimal', 111: 'NumpadDivide',
+      112: 'F1', 113: 'F2', 114: 'F3', 115: 'F4', 116: 'F5', 117: 'F6',
+      118: 'F7', 119: 'F8', 120: 'F9', 121: 'F10', 122: 'F11', 123: 'F12',
+      186: 'Semicolon', 187: 'Equal', 188: 'Comma', 189: 'Minus', 190: 'Period',
+      191: 'Slash', 192: 'Backquote', 219: 'BracketLeft', 220: 'Backslash',
+      221: 'BracketRight', 222: 'Quote'
+    };
+    
+    const matchedKeyName = jsKeyCodeToUiohookKeyName[keyCode];
+    if (matchedKeyName && UiohookKey[matchedKeyName] !== undefined) {
+      currentPttKey = matchedKeyName;
+      console.log('PTT key set from JS keyCode:', keyCode, '-> UiohookKey:', currentPttKey, '(Code:', UiohookKey[currentPttKey], ')');
+      return currentPttKey;
+    }
+    
+    // Fallback: Check if the keycode is already a native uiohook keycode
+    const matchedNativeKey = Object.keys(UiohookKey).find(k => UiohookKey[k] === keyCode);
+    if (matchedNativeKey) {
+      currentPttKey = matchedNativeKey;
+      console.log('PTT key set from native keycode:', keyCode, '-> UiohookKey:', currentPttKey);
+      return currentPttKey;
+    }
+  } else if (typeof newKey === 'string') {
+    // Fallback: Normalize string inputs (e.g. "KeyG" -> "G", "Digit1" -> "1")
+    let upperKey = newKey.toUpperCase();
+    if (upperKey.startsWith("KEY") && upperKey.length === 4) {
+      upperKey = upperKey.slice(3);
+    } else if (upperKey.startsWith("DIGIT") && upperKey.length === 6) {
+      upperKey = upperKey.slice(5);
+    }
+    
+    const matchedKeyName = Object.keys(UiohookKey).find(k => k.toUpperCase() === upperKey);
+    if (matchedKeyName) {
+      currentPttKey = matchedKeyName;
+      console.log('PTT key set from string:', newKey, '-> UiohookKey:', currentPttKey, '(Code:', UiohookKey[currentPttKey], ')');
+      return currentPttKey;
+    }
   }
+  
+  console.log('PTT key change failed for:', newKey);
   return false;
 });
 
@@ -301,11 +360,11 @@ ipcMain.on("notification:iframe", (event, data) => {
   if (!force && isFocused) {
     return; // Don't show if not forced and window is focused
   }
-  
+
   if (mainWindow && !mainWindow.isDestroyed() && !isFocused) {
     mainWindow.flashFrame(true);
   }
-  
+
   notificationManager.enqueue(iframeUrl);
 });
 

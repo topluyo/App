@@ -1,6 +1,6 @@
 {
   "name": "topluyo",
-  "version": "2026.7.623",
+  "version": "2026.7.1018",
   "description": "Topluyo",
   "main": "main.js",
   "scripts": {
@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "electron-log": "^5.4.1",
-    "electron-native-screenshare": "1.0.1",
+    "electron-native-screenshare": "1.1.0",
     "electron-updater": "^6.3.9",
     "electron-window-state": "^5.0.3",
     "uiohook-napi": "^1.5.5"

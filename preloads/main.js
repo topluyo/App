@@ -27,12 +27,19 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   ipcRenderer.on("electron-error", (event, errorData) => {
+    let osInfo = `${errorData.os} ${errorData.osRelease} (${errorData.arch})`;
+    if (errorData.os === 'win32') {
+      osInfo += errorData.isWindowsStore ? ' [Microsoft Store]' : ' [Stand-alone]';
+    }
+    
+    const extraInfo = errorData.extra ? `\nExtra: ${errorData.extra}` : '';
+
     const errorText = `**Desktop App Error**
 Type: ${errorData.type}
 Message: ${errorData.message}
-OS: ${errorData.os} ${errorData.osRelease} (${errorData.arch})
+OS: ${osInfo}
 App Version: ${errorData.appVersion}
-Electron: ${errorData.electronVersion}
+Electron: ${errorData.electronVersion}${extraInfo}
 Stack:
 \`\`\`
 ${errorData.stack || 'No stack trace'}

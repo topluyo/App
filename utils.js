@@ -162,7 +162,17 @@ const openExternalLinks = (url) => {
     const newUrl = new URL(url);
     require("child_process").exec(`xdg-open "${newUrl}"`);
   } else {
-    shell.openExternal(url);
+    shell.openExternal(url).catch(err => {
+      let safeUrl = url;
+      try {
+        const parsed = new URL(url);
+        safeUrl = parsed.hostname || url.substring(0, 30) + '...';
+      } catch(e) {}
+      
+      const customErr = new Error(`[openExternalLinks] Dış bağlantı açılamadı (Hedef: ${safeUrl}). Hata: ${err.message}`);
+      customErr.code = err.code;
+      throw customErr;
+    });
   }
 };
 

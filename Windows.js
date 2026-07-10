@@ -66,17 +66,20 @@ function createMainWindow(windowstate, url) {
   session.defaultSession.setDisplayMediaRequestHandler(mediaHandler);
   //mainWindow.webContents.openDevTools();
 
-  mainWindow.on("closed", () => {
-    mainWindow = null;
-  });
   mainWindow.on("unresponsive", () => {
     console.error("Ana pencere yanıt vermiyor.");
-    mainWindow.webContents.send(
-      "update-message",
-      "❗ Ana pencere yanıt vermiyor."
-    );
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("update-message", "❗ Ana pencere yanıt vermiyor.");
+    }
   });
+
   mainWindow.on("closed", () => {
+    // Close all remaining child windows when main window is destroyed
+    BrowserWindow.getAllWindows().forEach(win => {
+      if (win !== mainWindow && !win.isDestroyed()) {
+        win.destroy();
+      }
+    });
     mainWindow = null;
   });
   return mainWindow;

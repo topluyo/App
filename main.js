@@ -20,6 +20,19 @@ const notificationManager = require("./NotificationManager");
 
 function sendErrorToFrontend(error, type = 'uncaughtException') {
   try {
+    const extraDetails = {};
+    if (error && typeof error === 'object') {
+      ['name', 'code', 'errno', 'syscall', 'path'].forEach(key => {
+        if (error[key] !== undefined) {
+          let val = String(error[key]);
+          if (key === 'path' && val.includes('\\Users\\')) {
+            val = val.replace(/\\Users\\[^\\]+\\/i, '\\Users\\***\\');
+          }
+          extraDetails[key] = val;
+        }
+      });
+    }
+
     const errorData = {
       message: error.message || String(error),
       stack: error.stack,
@@ -28,7 +41,9 @@ function sendErrorToFrontend(error, type = 'uncaughtException') {
       osRelease: os.release(),
       arch: os.arch(),
       appVersion: app.getVersion(),
-      electronVersion: process.versions.electron
+      electronVersion: process.versions.electron,
+      isWindowsStore: process.env.WINDOWS_STORE === 'true' || process.windowsStore || false,
+      extra: Object.keys(extraDetails).length > 0 ? JSON.stringify(extraDetails) : null
     };
 
     const windows = BrowserWindow.getAllWindows();
@@ -144,6 +159,13 @@ app.whenReady().then(() => {
     if (!isQuitting) {
       event.preventDefault();
       mainWindow.hide();
+      
+      // Ana ekran traya gizlendiğinde açık olan tüm alt pencereleri (ScreenShare, OSS vb.) kapat
+      BrowserWindow.getAllWindows().forEach(win => {
+        if (win !== mainWindow && !win.isDestroyed()) {
+          win.close();
+        }
+      });
     }
   });
 
@@ -171,36 +193,6 @@ app.whenReady().then(() => {
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     openExternalLinks(url);
-    // if (isSafeUrl(url)) {
-    //   mainWindow.loadURL(url.replace("https://topluyo.com/", "/"));
-    //   return { action: "deny" };
-    // } else if (url.startsWith("topluyo://")) {
-    //   mainWindow.loadURL(url.replace("https://topluyo.com/", "/"));
-    //   return { action: "deny" };
-    // } else if (url.startsWith("javascript:")) {
-    //   return { action: "deny" };
-    // } else {
-    //   const parsedUrl = new URL(url);
-    //   if (parsedUrl.search && parsedUrl.search.includes("!login")) {
-    //     shell.openExternal(url);
-    //   } else {
-    //     dialog
-    //       .showMessageBox({
-    //         type: "warning",
-    //         buttons: ["Evet", "Hayır"],
-    //         defaultId: 1,
-    //         cancelId: 1,
-    //         title: "Dış Bağlantı Açılıyor",
-    //         message: "Bu bağlantıyı açmak istiyor musunuz?\n" + url,
-    //       })
-    //       .then((response) => {
-    //         if (response.response === 0) {
-    //           openExternalLinks(url);
-    //         }
-    //       });
-    //   }
-    //   return { action: "deny" };
-    //}
   });
 
   // Push-to-talk initialization
@@ -628,22 +620,35 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.`,
 
 // Harici link açma
 ipcMain.handle("open-external", async (_, url) => {
-  shell.openExternal(url);
+  shell.openExternal(url).catch(err => {
+    let safeUrl = url;
+    try {
+      const parsed = new URL(url);
+      safeUrl = parsed.hostname || url.substring(0, 30) + '...';
+    } catch (e) { }
+
+    const customErr = new Error(`[open-external-ipc] Dış bağlantı açılamadı (Hedef: ${safeUrl}). Hata: ${err.message}`);
+    customErr.code = err.code;
+    throw customErr;
+  });
 });
 
 ipcMain.on("minimize", () => {
-  BrowserWindow.getFocusedWindow().minimize();
+  const win = BrowserWindow.getFocusedWindow() || mainWindow;
+  if (win && !win.isDestroyed()) win.minimize();
 });
 ipcMain.on("maximize", () => {
-  const focusedWindow = BrowserWindow.getFocusedWindow();
-  if (focusedWindow.isMaximized()) {
-    focusedWindow.unmaximize();
+  const win = BrowserWindow.getFocusedWindow() || mainWindow;
+  if (!win || win.isDestroyed()) return;
+  if (win.isMaximized()) {
+    win.unmaximize();
   } else {
-    focusedWindow.maximize();
+    win.maximize();
   }
 });
 ipcMain.on("close", () => {
-  BrowserWindow.getFocusedWindow().close();
+  const win = BrowserWindow.getFocusedWindow() || mainWindow;
+  if (win && !win.isDestroyed()) win.close();
 });
 
 ipcMain.handle("start-native-audio", (event) => {
@@ -687,15 +692,49 @@ ipcMain.handle("start-native-audio", (event) => {
     console.log(`Screen Capture Mode: Excluding Topluyo PID=${targetPid} to prevent echo.`);
   }
 
-  if (captureModule.stopCapture) captureModule.stopCapture();
+  if (global.audioCaptureCleanup) {
+    global.audioCaptureCleanup();
+  } else if (captureModule && captureModule.stopCapture) {
+    captureModule.stopCapture();
+  }
+
+  const sender = event.sender;
+  const senderFrame = event.senderFrame;
+
+  const cleanup = () => {
+    if (captureModule && captureModule.stopCapture) {
+      captureModule.stopCapture();
+    }
+    if (sender && !sender.isDestroyed()) {
+      sender.removeListener("destroyed", cleanup);
+      sender.removeListener("did-navigate", cleanup);
+    }
+    if (global.audioCaptureCleanup === cleanup) {
+      global.audioCaptureCleanup = null;
+    }
+  };
+  global.audioCaptureCleanup = cleanup;
+
+  sender.once("destroyed", cleanup);
+  sender.once("did-navigate", cleanup);
 
   try {
     return captureModule.startCapture(targetPid, isIncludeMode, (buffer, meta) => {
       try {
-        if (event.senderFrame && !event.senderFrame.isDestroyed()) {
-          event.senderFrame.send("native-audio-data", buffer, meta);
-        } else if (event.sender && !event.sender.isDestroyed()) {
-          event.sender.send("native-audio-data", buffer, meta);
+        if (global.audioCaptureCleanup !== cleanup) return;
+
+        const frameAlive = senderFrame && !senderFrame.isDestroyed();
+        const senderAlive = sender && !sender.isDestroyed();
+
+        if (frameAlive) {
+          senderFrame.send("native-audio-data", buffer, meta);
+        } else if (senderAlive) {
+          sender.send("native-audio-data", buffer, meta);
+        } else {
+          // Both are destroyed or navigated, stop capture to prevent leak
+          if (global.audioCaptureCleanup === cleanup) {
+            global.audioCaptureCleanup();
+          }
         }
       } catch (e) {
         // Ignore if sender is destroyed
@@ -709,7 +748,9 @@ ipcMain.handle("start-native-audio", (event) => {
 });
 
 ipcMain.handle("stop-native-audio", () => {
-  if (captureModule && captureModule.stopCapture) {
+  if (global.audioCaptureCleanup) {
+    global.audioCaptureCleanup();
+  } else if (captureModule && captureModule.stopCapture) {
     captureModule.stopCapture();
   }
   return true;

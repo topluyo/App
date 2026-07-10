@@ -123,13 +123,18 @@ if (!gotLock) {
   process.exit(0);
 } else {
   app.on("second-instance", (event, commandLine) => {
-    // Windows ve Linux için URL'yi al
+    // Başka bir örnek açıldığında, eğer uygulamamız traydaysa (gizliyse) veya minimize edilmişse onu göster/öne getir
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.focus();
+    }
+
+    // Windows ve Linux için URL'yi al (Deep linking)
     const url = commandLine.find((arg) => arg.startsWith("topluyo://"));
     if (url) {
       deeplinkingUrl = url;
       if (mainWindow) {
-        mainWindow.show();
-        mainWindow.focus();
         mainWindow.loadURL(
           "https://topluyo.com" + url.replace("topluyo://", "/")
         );

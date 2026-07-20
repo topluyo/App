@@ -32,7 +32,7 @@ function createMainWindow(windowstate, url) {
       devTools: process.env.NODE_ENV === "development",
       contextIsolation: true,
       nodeIntegration: false,
-      nodeIntegrationInSubFrames: false,
+      nodeIntegrationInSubFrames: true,
       preload: path.join(__dirname, "preloads/main.js"),
     },
   });

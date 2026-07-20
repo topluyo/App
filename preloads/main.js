@@ -89,138 +89,162 @@ webFrame.executeJavaScript(`
       }
     });
   }
-`).catch(e => {});
+`).catch(e => { });
 
-// Inject MediaDevices override into the main world
-webFrame.executeJavaScript(`
-  if (typeof MediaDevices !== 'undefined' && MediaDevices.prototype.getDisplayMedia) {
-    const originalGetDisplayMedia = MediaDevices.prototype.getDisplayMedia;
-    MediaDevices.prototype.getDisplayMedia = async function (constraints) {
-      console.log("[NativeCapture] getDisplayMedia intercepted! Constraints:", constraints);
+// Inject MediaDevices override synchronously into the main world using a script tag
+const injectScript = document.createElement('script');
+injectScript.textContent = `
+  try {
+    const patchMediaDevices = () => {
+      const mediaDevicesProto = Object.getPrototypeOf(navigator.mediaDevices) || MediaDevices.prototype;
+      if (mediaDevicesProto && mediaDevicesProto.getDisplayMedia && !navigator.mediaDevices.__isNativeCapturePatched) {
+        navigator.mediaDevices.__isNativeCapturePatched = true;
+        
+        const originalGetDisplayMedia = mediaDevicesProto.getDisplayMedia;
+        mediaDevicesProto.getDisplayMedia = async function (constraints) {
 
-      const stream = await originalGetDisplayMedia.call(this, constraints);
-      const audioTracks = stream.getAudioTracks();
-      console.log("[NativeCapture] Original stream audio tracks:", audioTracks.length);
+          const stream = await originalGetDisplayMedia.call(this, constraints);
+          const audioTracks = stream.getAudioTracks();
 
-      if (audioTracks.length > 0) {
-        console.log("[NativeCapture] Requesting WASAPI start from main process...");
-        try {
-          const started = await window.nativeAudioIPC.start();
-          console.log("[NativeCapture] WASAPI start response:", started);
-
-          if (started && started.platform === 'linux') {
-            console.log("[NativeCapture] PulseAudio Linux routing started:", started.sinkName);
-            audioTracks[0].stop();
-            stream.removeTrack(audioTracks[0]);
-
+          if (audioTracks.length > 0) {
             try {
-              const paStream = await navigator.mediaDevices.getUserMedia({
-                audio: { deviceId: started.sinkName }
-              });
-              const paAudioTrack = paStream.getAudioTracks()[0];
+              const started = await window.nativeAudioIPC.start();
 
-              const stopNativeCapture = () => {
-                console.log("[NativeCapture] Stopping Linux capture...");
-                window.nativeAudioIPC.stop();
-                paAudioTrack.stop();
-              };
+              if (started && started.platform === 'linux') {
+                audioTracks[0].stop();
+                stream.removeTrack(audioTracks[0]);
 
-              const originalTrackStop = paAudioTrack.stop.bind(paAudioTrack);
-              paAudioTrack.stop = () => {
-                stopNativeCapture();
-                originalTrackStop();
-              };
+                try {
+                  const paStream = await navigator.mediaDevices.getUserMedia({
+                    audio: { deviceId: started.sinkName }
+                  });
+                  const paAudioTrack = paStream.getAudioTracks()[0];
 
-              const videoTracks = stream.getVideoTracks();
-              if (videoTracks.length > 0) {
-                videoTracks[0].addEventListener('ended', stopNativeCapture);
-              }
+                  const stopNativeCapture = () => {
+                    window.nativeAudioIPC.stop();
+                    paAudioTrack.stop();
+                  };
 
-              stream.addTrack(paAudioTrack);
-              console.log("[NativeCapture] Added PulseAudio virtual track to stream!");
-            } catch (e) {
-              console.error("[NativeCapture] Failed to capture PulseAudio sink via getUserMedia:", e);
-            }
-          } else if (started) {
-            console.log("[NativeCapture] Native WASAPI started successfully. Stopping default loopback track.");
-            audioTracks[0].stop();
-            stream.removeTrack(audioTracks[0]);
+                  const originalTrackStop = paAudioTrack.stop.bind(paAudioTrack);
+                  paAudioTrack.stop = () => {
+                    stopNativeCapture();
+                    originalTrackStop();
+                  };
 
-            console.log("[NativeCapture] Creating WebCodecs MediaStreamTrackGenerator.");
-            const generator = new MediaStreamTrackGenerator({ kind: 'audio' });
-            const writer = generator.writable.getWriter();
+                  const videoTracks = stream.getVideoTracks();
+                  if (videoTracks.length > 0) {
+                    videoTracks[0].addEventListener('ended', stopNativeCapture);
+                  }
 
-            let timestamp = 0; // Microseconds
-            let packetCount = 0;
-
-            window.nativeAudioIPC.onData((buffer, meta) => {
-              try {
-                packetCount++;
-                if (packetCount % 100 === 0) {
-                  console.log(\`[NativeCapture] Received 100 audio packets. Latest meta:\`, meta, \`Buffer size: \${buffer.byteLength}\`);
+                  stream.addTrack(paAudioTrack);
+                } catch (e) {
+                  console.error("[NativeCapture] Failed to capture PulseAudio sink via getUserMedia:", e);
                 }
+              } else if (started) {
+                audioTracks[0].stop();
+                stream.removeTrack(audioTracks[0]);
 
-                const arrayBuffer = buffer.buffer || buffer;
-                const byteOffset = buffer.byteOffset || 0;
-                const byteLength = buffer.byteLength || buffer.length;
+                const generator = new MediaStreamTrackGenerator({ kind: 'audio' });
+                const writer = generator.writable.getWriter();
 
-                const isFloat = meta.isFloat;
-                let typedData;
+                let timestamp = 0; // Microseconds
+                let packetCount = 0;
 
-                if (isFloat) {
-                  typedData = new Float32Array(arrayBuffer, byteOffset, byteLength / 4);
-                } else {
-                  typedData = new Int16Array(arrayBuffer, byteOffset, byteLength / 2);
-                }
+                window.nativeAudioIPC.onData((buffer, meta) => {
+                  try {
+                    packetCount++;
 
-                const frames = typedData.length / meta.channels;
+                    const arrayBuffer = buffer.buffer || buffer;
+                    const byteOffset = buffer.byteOffset || 0;
+                    const byteLength = buffer.byteLength || buffer.length;
 
-                const audioData = new AudioData({
-                  format: isFloat ? 'f32' : 's16',
-                  sampleRate: meta.sampleRate,
-                  numberOfFrames: frames,
-                  numberOfChannels: meta.channels,
-                  timestamp: timestamp,
-                  data: typedData
+                    const isFloat = meta.isFloat;
+                    let typedData;
+
+                    if (isFloat) {
+                      typedData = new Float32Array(arrayBuffer, byteOffset, byteLength / 4);
+                    } else {
+                      typedData = new Int16Array(arrayBuffer, byteOffset, byteLength / 2);
+                    }
+
+                    const frames = typedData.length / meta.channels;
+
+                    const audioData = new AudioData({
+                      format: isFloat ? 'f32' : 's16',
+                      sampleRate: meta.sampleRate,
+                      numberOfFrames: frames,
+                      numberOfChannels: meta.channels,
+                      timestamp: timestamp,
+                      data: typedData
+                    });
+
+                    timestamp += (frames / meta.sampleRate) * 1000000;
+                    writer.write(audioData);
+                  } catch (e) {
+                    console.error("[NativeCapture] Audio insertion error:", e);
+                  }
                 });
 
-                timestamp += (frames / meta.sampleRate) * 1000000;
-                writer.write(audioData);
-              } catch (e) {
-                console.error("[NativeCapture] Audio insertion error:", e);
+                const stopNativeCapture = () => {
+                  window.nativeAudioIPC.stop();
+                  window.nativeAudioIPC.offData();
+                };
+
+                const originalGeneratorStop = generator.stop.bind(generator);
+                generator.stop = () => {
+                  stopNativeCapture();
+                  originalGeneratorStop();
+                };
+
+                const videoTracks = stream.getVideoTracks();
+                if (videoTracks.length > 0) {
+                  videoTracks[0].addEventListener('ended', () => {
+                    stopNativeCapture();
+                  });
+                }
+
+                stream.addTrack(generator);
               }
-            });
-
-            const stopNativeCapture = () => {
-              console.log("[NativeCapture] Stopping WASAPI capture...");
-              window.nativeAudioIPC.stop();
-              window.nativeAudioIPC.offData();
-            };
-
-            const originalGeneratorStop = generator.stop.bind(generator);
-            generator.stop = () => {
-              stopNativeCapture();
-              originalGeneratorStop();
-            };
-
-            const videoTracks = stream.getVideoTracks();
-            if (videoTracks.length > 0) {
-              videoTracks[0].addEventListener('ended', () => {
-                console.log("[NativeCapture] Video track ended, stopping audio.");
-                stopNativeCapture();
-              });
+            } catch (err) {
+              console.error("[NativeCapture] IPC error during native capture start:", err);
             }
-
-            stream.addTrack(generator);
-            console.log("[NativeCapture] Added native audio track to stream!");
-          } else {
-            console.log("[NativeCapture] Native capture returned false. Falling back to default Electron loopback.");
           }
-        } catch (err) {
-          console.error("[NativeCapture] IPC error during native capture start:", err);
-        }
+          return stream;
+        };
       }
-      return stream;
     };
+    
+    if (navigator.mediaDevices) {
+      patchMediaDevices();
+    } else {
+      let attempts = 0;
+      const patchInterval = setInterval(() => {
+        attempts++;
+        if (navigator.mediaDevices) {
+          patchMediaDevices();
+          clearInterval(patchInterval);
+        } else if (attempts > 100) {
+          clearInterval(patchInterval);
+        }
+      }, 50);
+    }
+  } catch (err) {
+    console.error("[NativeCapture] Error during synchronous injection:", err);
   }
-`).catch(console.error);
+`;
+
+// Inject into the DOM synchronously before other scripts load
+if (document.documentElement) {
+  document.documentElement.appendChild(injectScript);
+  injectScript.remove();
+} else {
+  // Use MutationObserver to inject as soon as documentElement is available, before page scripts
+  const observer = new MutationObserver(() => {
+    if (document.documentElement) {
+      document.documentElement.appendChild(injectScript);
+      injectScript.remove();
+      observer.disconnect();
+    }
+  });
+  observer.observe(document, { childList: true });
+}

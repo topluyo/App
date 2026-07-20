@@ -4,10 +4,6 @@ const { ipcRenderer, contextBridge } = require("electron");
 let isClosing = false;
 
 window.addEventListener("DOMContentLoaded", () => {
-  window.closeWindow = () => {
-    isClosing = true;
-    ipcRenderer.send("notification:close"); 
-  };
   document.body.classList.add("electron-app");
 
   window.addEventListener("mousedown", () => {
@@ -19,24 +15,16 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-try {
-  contextBridge.exposeInMainWorld("NotificationClose", () => {
-    isClosing = true;
-    ipcRenderer.send('notification:close');
-  });
-  contextBridge.exposeInMainWorld("closeWindow", () => {
-    isClosing = true;
-    ipcRenderer.send('notification:close');
-  });
-  contextBridge.exposeInMainWorld("NotificationResponse", (obj) => ipcRenderer.send('notification:event', obj));
-} catch (e) {
-  window.NotificationClose = () => {
-    isClosing = true;
-    ipcRenderer.send('notification:close');
-  };
-  window.closeWindow = () => {
-    isClosing = true;
-    ipcRenderer.send('notification:close');
-  };
-  window.NotificationResponse = (obj) => ipcRenderer.send('notification:event', obj);
-}
+contextBridge.exposeInMainWorld("NotificationClose", () => {
+  isClosing = true;
+  ipcRenderer.send('notification:close');
+});
+
+contextBridge.exposeInMainWorld("closeWindow", () => {
+  isClosing = true;
+  ipcRenderer.send('notification:close');
+});
+
+contextBridge.exposeInMainWorld("NotificationResponse", (obj) => {
+  ipcRenderer.send('notification:event', obj);
+});

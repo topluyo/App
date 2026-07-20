@@ -144,6 +144,10 @@ if (!gotLock) {
 }
 
 app.whenReady().then(() => {
+  // Cloudflare vb. bot korumalarını aşmak için User-Agent'tan Electron ve uygulama adını temizliyoruz
+  const { session } = require("electron");
+  app.userAgentFallback = session.defaultSession.getUserAgent().replace(/Electron\/\S+\s?/, "").replace(/topluyo\/\S+\s?/, "");
+
   //* Load the previous state with fallback to defaults
   const mainWindowState = windowStateKeeper({
     defaultWidth: 800,

@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "electron-log": "^5.4.1",
-    "electron-native-screenshare": "1.1.0",
+    "electron-native-screenshare": "1.1.2",
     "electron-updater": "^6.3.9",
     "electron-window-state": "^5.0.3",
     "uiohook-napi": "^1.5.5"

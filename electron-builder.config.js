@@ -1,6 +1,7 @@
 const config = {
   "appId": "com.topluyo.app",
   "productName": "Topluyo",
+  "desktopName": "Topluyo",
   "directories": {
     "output": "dist"
   },
@@ -72,12 +73,10 @@ const config = {
     "category": "Utility",
     "description": "Topluyo",
     "executableName": "Topluyo",
-    "desktopName": "Topluyo",
-    "syncDesktopName": true,
     "artifactName": "Topluyo-${version}.${ext}",
     "maintainer": "Hasan Delibaş <info@topluyo.com>"
   },
-  "snapcraft": {
+  "snap": {
     "confinement": "classic",
     "useTemplateApp": false,
     "publish": false

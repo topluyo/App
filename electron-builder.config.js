@@ -77,6 +77,7 @@ const config = {
   },
   "snap": {
     "confinement": "classic",
+    "useTemplateApp": false,
     "publish": false
   },
   "mac": {

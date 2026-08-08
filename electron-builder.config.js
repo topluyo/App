@@ -72,10 +72,12 @@ const config = {
     "category": "Utility",
     "description": "Topluyo",
     "executableName": "Topluyo",
+    "desktopName": "Topluyo",
+    "syncDesktopName": true,
     "artifactName": "Topluyo-${version}.${ext}",
     "maintainer": "Hasan Delibaş <info@topluyo.com>"
   },
-  "snap": {
+  "snapcraft": {
     "confinement": "classic",
     "useTemplateApp": false,
     "publish": false

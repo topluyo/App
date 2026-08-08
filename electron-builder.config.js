@@ -1,7 +1,6 @@
 const config = {
   "appId": "com.topluyo.app",
   "productName": "Topluyo",
-  "desktopName": "Topluyo",
   "directories": {
     "output": "dist"
   },

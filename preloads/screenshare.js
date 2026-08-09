@@ -11,4 +11,5 @@ contextBridge.exposeInMainWorld("stream", {
   getSources: () => ipcRenderer.invoke("getSources"),
   setSource: (data) =>
     ipcRenderer.invoke("setSource", { id:data.id, isAudioEnabled:data.audio }),
+  isNativeAudioAvailable: () => ipcRenderer.invoke("isNativeAudioAvailable"),
 });

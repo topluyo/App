@@ -660,6 +660,13 @@ ipcMain.on("close", () => {
   if (win && !win.isDestroyed()) win.close();
 });
 
+ipcMain.handle("isNativeAudioAvailable", () => {
+  if (!captureModule) return { available: false, backend: null };
+  const available = captureModule.isAvailable ? captureModule.isAvailable() : false;
+  const backend = captureModule.getLinuxAudioBackend ? captureModule.getLinuxAudioBackend() : null;
+  return { available, backend };
+});
+
 ipcMain.handle("start-native-audio", (event) => {
   const sourceId = global.lastSelectedSource || "";
   console.log("start-native-audio invoked. Selected source:", sourceId);

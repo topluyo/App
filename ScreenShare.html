@@ -299,10 +299,13 @@
     </div>
 
     <div class="footer">
-      <label class="audio-toggle">
-        <span class="switch-icon">🔊</span> Sesi Paylaş
-        <input id="audio" type="checkbox" switch />
-      </label>
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 5px;">
+        <label class="audio-toggle">
+          <span class="switch-icon">🔊</span> Sesi Paylaş
+          <input id="audio" type="checkbox" switch />
+        </label>
+        <span id="audio-warning" style="display: none; color: #ff4d4f; font-size: 11px; max-width: 250px; line-height: 1.3;">⚠️ Sistem uyumlu değil, ses yankı yapabilir.</span>
+      </div>
       <button id="start-sharing">Paylaşımı Başlat</button>
     </div>
 
@@ -313,6 +316,23 @@
       async function initialize() {
         allSources = await window.stream.getSources();
         renderSources();
+        
+        try {
+          const status = await window.stream.isNativeAudioAvailable();
+          const warningEl = document.getElementById("audio-warning");
+          
+          if (!status.available) {
+            warningEl.style.display = "block";
+            warningEl.style.color = "#ff4d4f";
+            warningEl.innerText = "⚠️ Sistem uyumlu değil, ses yankı yapabilir.";
+          } else if (status.backend) {
+            warningEl.style.display = "block";
+            warningEl.style.color = "#52c41a";
+            warningEl.innerText = `✅ Ses İzolasyonu Aktif (${status.backend})`;
+          }
+        } catch (err) {
+          console.error("isNativeAudioAvailable failed:", err);
+        }
       }
 
       function renderSources() {

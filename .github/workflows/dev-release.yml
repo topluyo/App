@@ -47,7 +47,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libx11-dev libxext-dev libxtst-dev libxkbcommon-x11-dev libxkbfile-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxt-dev libpipewire-0.3-dev libpulse-dev
-          sudo snap install snapcraft --classic
+          sudo snap install snapcraft --classic --channel=7.x/stable
 
       - name: Install dependencies
         run: npm install

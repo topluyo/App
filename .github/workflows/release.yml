@@ -68,6 +68,7 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SNAPCRAFT_BUILD_ENVIRONMENT: host
 
       # ✅ Package.json'dan version bilgisini al
       - name: Get version from package.json

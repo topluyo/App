@@ -42,6 +42,12 @@ jobs:
           python3 -m ensurepip --upgrade
           python3 -m pip install --upgrade pip setuptools
 
+      - name: Setup LXD for Snapcraft
+        if: matrix.os == 'ubuntu-latest'
+        uses: canonical/setup-lxd@v0.1.2
+        with:
+          channel: latest/stable
+
       - name: Install Linux build deps
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -67,7 +73,6 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SNAPCRAFT_BUILD_ENVIRONMENT: host
 
       # ✅ Package.json'dan version bilgisini al
       - name: Get version from package.json

@@ -44,11 +44,19 @@ jobs:
           python3 -m ensurepip --upgrade
           python3 -m pip install --upgrade pip setuptools
 
+      - name: Setup LXD for Snapcraft
+        if: matrix.os == 'ubuntu-latest'
+        uses: canonical/setup-lxd@v0.1.2
+        with:
+          channel: latest/stable
+
       - name: Install Linux build deps
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libx11-dev libxext-dev libxtst-dev libxkbcommon-x11-dev libxkbfile-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxt-dev
+          sudo apt-get install -y libx11-dev libxext-dev libxtst-dev libxkbcommon-x11-dev libxkbfile-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxt-dev libpipewire-0.3-dev libpulse-dev
+          sudo snap install core22
+          sudo snap install snapcraft --classic --channel=7.x/stable
 
       - name: Install dependencies
         run: npm install
@@ -56,6 +64,11 @@ jobs:
       - name: Build Electron App
         shell: bash
         run: |
+          if [ "${{ matrix.name }}" = "nsis" ]; then
+            export WIN_CSC_LINK="${{ secrets.WIN_CERTS_BASE64 }}"
+            export WIN_CSC_KEY_PASSWORD="${{ secrets.WIN_CERTS_PASSWORD }}"
+          fi
+
           if [ "${{ matrix.name }}" = "linux" ]; then
             npm run build:linux
           elif [ "${{ matrix.name }}" = "nsis" ]; then
@@ -91,52 +104,52 @@ jobs:
           }
         shell: powershell
 
-      # ✅ Windows için eSigner ile imzala - NSIS Installer
-      - name: Sign NSIS Installer
-        if: matrix.os == 'windows-latest' && matrix.name == 'nsis'
-        uses: sslcom/esigner-codesign@develop
-        with:
-          command: sign
-          username: ${{ secrets.ESIGNER_USERNAME }}
-          password: ${{ secrets.ESIGNER_PASSWORD }}
-          credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
-          totp_secret: ${{ secrets.ESIGNER_TOTP }}
-          file_path: dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe
-          malware_block: false
-          override: true
-          clean_logs: false
+      # # ✅ Windows için eSigner ile imzala - NSIS Installer
+      # - name: Sign NSIS Installer
+      #   if: matrix.os == 'windows-latest' && matrix.name == 'nsis'
+      #   uses: sslcom/esigner-codesign@develop
+      #   with:
+      #     command: sign
+      #     username: ${{ secrets.ESIGNER_USERNAME }}
+      #     password: ${{ secrets.ESIGNER_PASSWORD }}
+      #     credential_id: ${{ secrets.ESIGNER_CREDENTIAL_ID }}
+      #     totp_secret: ${{ secrets.ESIGNER_TOTP }}
+      #     file_path: dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe
+      #     malware_block: false
+      #     override: true
+      #     clean_logs: false
 
-      - name: Update latest.yml after signing (NSIS)
-        if: matrix.os == 'windows-latest' && matrix.name == 'nsis'
-        run: |
-          $exeFile = "dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe"
-          $version = "${{ steps.package-version.outputs.version }}"
-          
-          # İmzalanmış dosyanın yeni SHA512 değerini hesapla
-          $fileHash = Get-FileHash -Path $exeFile -Algorithm SHA512
-          # Hex string'i byte array'e çevir ve sonra Base64'e çevir
-          $hexBytes = [byte[]] -split ($fileHash.Hash -replace '..', '0x$& ')
-          $sha512 = [System.Convert]::ToBase64String($hexBytes)
-          
-          # Dosya boyutunu al
-          $fileSize = (Get-Item $exeFile).Length
-          
-          # Yeni latest.yml içeriğini oluştur
-          $currentDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-          $latestYml = "version: $version`n" + 
-                       "files:`n" + 
-                       "  - url: Topluyo-Setup-$version.exe`n" + 
-                       "    sha512: $sha512`n" + 
-                       "    size: $fileSize`n" + 
-                       "path: Topluyo-Setup-$version.exe`n" + 
-                       "sha512: $sha512`n" + 
-                       "releaseDate: '$currentDate'"
-          
-          # latest.yml dosyasını güncelle (BOM olmadan UTF8)
-          [System.IO.File]::WriteAllText("dist/latest.yml", $latestYml, [System.Text.UTF8Encoding]::new($false))
-          Write-Host "latest.yml updated with new SHA512: $sha512"
-          Write-Host "File size: $fileSize bytes"
-        shell: powershell
+      # - name: Update latest.yml after signing (NSIS)
+      #   if: matrix.os == 'windows-latest' && matrix.name == 'nsis'
+      #   run: |
+      #     $exeFile = "dist/Topluyo-Setup-${{ steps.package-version.outputs.version }}.exe"
+      #     $version = "${{ steps.package-version.outputs.version }}"
+      #     
+      #     # İmzalanmış dosyanın yeni SHA512 değerini hesapla
+      #     $fileHash = Get-FileHash -Path $exeFile -Algorithm SHA512
+      #     # Hex string'i byte array'e çevir ve sonra Base64'e çevir
+      #     $hexBytes = [byte[]] -split ($fileHash.Hash -replace '..', '0x$& ')
+      #     $sha512 = [System.Convert]::ToBase64String($hexBytes)
+      #     
+      #     # Dosya boyutunu al
+      #     $fileSize = (Get-Item $exeFile).Length
+      #     
+      #     # Yeni latest.yml içeriğini oluştur
+      #     $currentDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+      #     $latestYml = "version: $version`n" + 
+      #                  "files:`n" + 
+      #                  "  - url: Topluyo-Setup-$version.exe`n" + 
+      #                  "    sha512: $sha512`n" + 
+      #                  "    size: $fileSize`n" + 
+      #                  "path: Topluyo-Setup-$version.exe`n" + 
+      #                  "sha512: $sha512`n" + 
+      #                  "releaseDate: '$currentDate'"
+      #     
+      #     # latest.yml dosyasını güncelle (BOM olmadan UTF8)
+      #     [System.IO.File]::WriteAllText("dist/latest.yml", $latestYml, [System.Text.UTF8Encoding]::new($false))
+      #     Write-Host "latest.yml updated with new SHA512: $sha512"
+      #     Write-Host "File size: $fileSize bytes"
+      #   shell: powershell
 
       - name: Delete builder-debug.yml cross-platform
         shell: pwsh

@@ -76,7 +76,9 @@ const config = {
     "maintainer": "Hasan Delibaş <info@topluyo.com>"
   },
   "snap": {
+    "base": "core22",
     "confinement": "classic",
+    "useTemplateApp": false,
     "publish": false
   },
   "mac": {

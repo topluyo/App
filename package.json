@@ -1,6 +1,7 @@
 {
   "name": "topluyo",
-  "version": "2026.7.1018",
+  "desktopName": "Topluyo",
+  "version": "2026.8.1616",
   "description": "Topluyo",
   "main": "main.js",
   "scripts": {
@@ -25,7 +26,7 @@
   },
   "dependencies": {
     "electron-log": "^5.4.1",
-    "electron-native-screenshare": "1.1.0",
+    "electron-native-screenshare": "1.2.0",
     "electron-updater": "^6.3.9",
     "electron-window-state": "^5.0.3",
     "uiohook-napi": "^1.5.5"
@@ -114,7 +115,9 @@
       "maintainer": "Hasan Delibaş <info@topluyo.com>"
     },
     "snap": {
+      "base": "core22",
       "confinement": "classic",
+      "useTemplateApp": false,
       "publish": false
     },
     "mac": {
@@ -147,7 +150,7 @@
     ]
   },
   "allowScripts": {
-    "electron-native-screenshare@1.0.1": true,
+    "electron-native-screenshare@1.2.0": true,
     "electron-winstaller@5.4.0": true,
     "uiohook-napi@1.5.5": true
   }

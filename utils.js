@@ -36,7 +36,13 @@ const getAllSources = async () => {
   }
 };
 
+let currentStreamWin = null;
 async function createStreamWindow(_, callback) {
+  if (currentStreamWin && !currentStreamWin.isDestroyed()) {
+    currentStreamWin.focus();
+    return;
+  }
+
   let callbackcalled = false;
   const win = new BrowserWindow({
     width: 900,
@@ -58,6 +64,7 @@ async function createStreamWindow(_, callback) {
     win.setAlwaysOnTop(true, "screen-saver");
   }
 
+  currentStreamWin = win;
   win.loadFile("ScreenShare.html");
 
   const allSources = await getAllSources();
@@ -93,15 +100,19 @@ async function createStreamWindow(_, callback) {
   win.on("close", () => {
     console.log("Stream penceresi kapatılıyor");
     if (callbackcalled) return;
+    if (callbackcalled) {
+      currentStreamWin = null;
+      return;
+    }
     callbackcalled = true;
     try {
       ipcMain.removeHandler("getSources");
       ipcMain.removeHandler("setSource");
       callback(null);
     } catch (e) {
-      console.error("Pencere kapatma hatası:", e);
-      throw e;
+      console.error(e);
     }
+    currentStreamWin = null;
   });
 }
 
@@ -177,7 +188,13 @@ const openExternalLinks = (url) => {
 };
 
 
+let currentOssWin = null;
 function ossWindow(){
+  if (currentOssWin && !currentOssWin.isDestroyed()) {
+    currentOssWin.focus();
+    return;
+  }
+
   let ossWin = new BrowserWindow({
     width: 800,
     height: 600,
@@ -197,8 +214,11 @@ function ossWindow(){
     return { action: "deny" };
   })
   ossWin.on("closed", () => {
+    currentOssWin = null;
     ossWin = null;
   });
+  
+  currentOssWin = ossWin;
 }
 
 module.exports = { isSafeUrl, mediaHandler, openExternalLinks, ossWindow };

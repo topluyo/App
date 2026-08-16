@@ -30,8 +30,8 @@ function createMainWindow(windowstate, url) {
     icon: path.join(__dirname, "topluyo.png"),
     webPreferences: {
       devTools: process.env.NODE_ENV === "development",
-      contextIsolation: false,
-      nodeIntegration: true,
+      contextIsolation: true,
+      nodeIntegration: false,
       nodeIntegrationInSubFrames: true,
       preload: path.join(__dirname, "preloads/main.js"),
     },

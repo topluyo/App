@@ -40,8 +40,7 @@ const config = {
     ],
     "icon": "build/icon.ico",
     "artifactName": "Topluyo-Setup-${version}.${ext}",
-    "requestedExecutionLevel": "asInvoker",
-    "rfc3161TimeStampServer": "http://timestamp.digicert.com"
+    "requestedExecutionLevel": "asInvoker"
   },
   "appx": {
     "identityName": "TopluyoApp.Topluyo",

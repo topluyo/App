@@ -62,6 +62,11 @@ jobs:
       - name: Build Electron App
         shell: bash
         run: |
+          if [ "${{ matrix.name }}" = "nsis" ]; then
+            export WIN_CSC_LINK="${{ secrets.WIN_CERTS_BASE64 }}"
+            export WIN_CSC_KEY_PASSWORD="${{ secrets.WIN_CERTS_PASSWORD }}"
+          fi
+
           if [ "${{ matrix.name }}" = "linux" ]; then
             npm run build:linux
           elif [ "${{ matrix.name }}" = "nsis" ]; then
@@ -73,8 +78,6 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WIN_CSC_LINK: ${{ secrets.WIN_CERTS_BASE64 }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CERTS_PASSWORD }}
 
       # ✅ Package.json'dan version bilgisini al
       - name: Get version from package.json

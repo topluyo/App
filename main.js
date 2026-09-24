@@ -18,6 +18,27 @@ try {
 let currentPttKey = 'G'; // default
 const notificationManager = require("./NotificationManager");
 
+/**
+ * Deep link URL'lerini sanitize eder.
+ * Yalnızca topluyo.com origin'ine çözümlenen path'lere izin verir.
+ * @param {string} rawUrl - topluyo:// ile başlayan ham URL
+ * @returns {string|null} Güvenli path veya null
+ */
+function sanitizeDeepLinkPath(rawUrl) {
+  try {
+    const deepPath = rawUrl.replace(/^topluyo:\/\//, "");
+    const resolved = new URL("/" + deepPath, "https://topluyo.com");
+    if (resolved.origin !== "https://topluyo.com" || resolved.protocol !== "https:") {
+      console.error("[DeepLink] Engellenen URL:", rawUrl);
+      return null;
+    }
+    return resolved.pathname + resolved.search + resolved.hash;
+  } catch (_) {
+    console.error("[DeepLink] Geçersiz deep link:", rawUrl);
+    return null;
+  }
+}
+
 function sendErrorToFrontend(error, type = 'uncaughtException') {
   try {
     const extraDetails = {};
@@ -133,11 +154,12 @@ if (!gotLock) {
     // Windows ve Linux için URL'yi al (Deep linking)
     const url = commandLine.find((arg) => arg.startsWith("topluyo://"));
     if (url) {
-      deeplinkingUrl = url;
-      if (mainWindow) {
-        mainWindow.loadURL(
-          "https://topluyo.com" + url.replace("topluyo://", "/")
-        );
+      const safePath = sanitizeDeepLinkPath(url);
+      if (safePath) {
+        deeplinkingUrl = url;
+        if (mainWindow) {
+          mainWindow.loadURL("https://topluyo.com" + safePath);
+        }
       }
     }
   });
@@ -161,7 +183,7 @@ app.whenReady().then(() => {
   }
   mainWindow = createMainWindow(
     mainWindowState,
-    deeplinkingUrl ? deeplinkingUrl.replace("topluyo://", "/") : null
+    deeplinkingUrl ? sanitizeDeepLinkPath(deeplinkingUrl) : null
   );
 
   mainWindow.on('close', (event) => {
@@ -202,6 +224,22 @@ app.whenReady().then(() => {
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     openExternalLinks(url);
+    return { action: "deny" };
+  });
+
+  // Navigation guard — yalnızca topluyo.com ve alt alan adlarına izin ver
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    try {
+      const parsed = new URL(url);
+      const hostname = parsed.hostname;
+      const isTopluyoDomain = hostname === "topluyo.com" || hostname.endsWith(".topluyo.com");
+      if (parsed.protocol !== "https:" || !isTopluyoDomain) {
+        console.error("[will-navigate] Engellenen navigasyon:", parsed.origin);
+        event.preventDefault();
+      }
+    } catch (_) {
+      event.preventDefault();
+    }
   });
 
   // Push-to-talk initialization
@@ -258,13 +296,14 @@ app.whenReady().then(() => {
 if (process.platform === "darwin") {
   app.on("open-url", (event, url) => {
     event.preventDefault();
-    deeplinkingUrl = url;
-    if (mainWindow) {
-      mainWindow.show();
-      mainWindow.focus();
-      mainWindow.loadURL(
-        "https://topluyo.com" + url.replace("topluyo://", "/")
-      );
+    const safePath = sanitizeDeepLinkPath(url);
+    if (safePath) {
+      deeplinkingUrl = url;
+      if (mainWindow) {
+        mainWindow.show();
+        mainWindow.focus();
+        mainWindow.loadURL("https://topluyo.com" + safePath);
+      }
     }
   });
 }
@@ -629,17 +668,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.`,
 
 // Harici link açma
 ipcMain.handle("open-external", async (_, url) => {
-  shell.openExternal(url).catch(err => {
-    let safeUrl = url;
-    try {
-      const parsed = new URL(url);
-      safeUrl = parsed.hostname || url.substring(0, 30) + '...';
-    } catch (e) { }
-
-    const customErr = new Error(`[open-external-ipc] Dış bağlantı açılamadı (Hedef: ${safeUrl}). Hata: ${err.message}`);
-    customErr.code = err.code;
-    throw customErr;
-  });
+  openExternalLinks(url);
 });
 
 ipcMain.on("minimize", () => {

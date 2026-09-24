@@ -313,6 +313,13 @@
       let allSources = [];
       let currentTab = "screen"; // 'screen' or 'window'
 
+      /** @param {string} text @returns {string} HTML-escaped string */
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
       async function initialize() {
         allSources = await window.stream.getSources();
         renderSources();
@@ -347,7 +354,7 @@
         filteredSources.forEach((source) => {
           let html;
           if (source.thumbnail) {
-            html = `<img src='${source.thumbnail}' alt='Thumbnail'><div class="name">${source.name}</div>`;
+            html = `<img src='${source.thumbnail}' alt='Thumbnail'><div class="name">${escapeHtml(source.name)}</div>`;
           } else {
             html = `<div class="placeholder">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -356,7 +363,7 @@
                         <line x1="12" y1="17" x2="12" y2="21"></line>
                       </svg>
                     </div>
-                    <div class="name">${source.name}</div>`;
+                    <div class="name">${escapeHtml(source.name)}</div>`;
           }
           let element = document.createElement("div");
           element.innerHTML = html;

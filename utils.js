@@ -169,18 +169,42 @@ function isSafeUrl(url) {
 }
 
 const openExternalLinks = (url) => {
+  // Protocol whitelist — yalnızca http(s) izin ver
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (_) {
+    console.error("[openExternalLinks] Geçersiz URL:", url);
+    return;
+  }
+
+  const ALLOWED_PROTOCOLS = ["http:", "https:"];
+  if (!ALLOWED_PROTOCOLS.includes(parsed.protocol)) {
+    console.error(
+      `[openExternalLinks] Engellenen protokol: ${parsed.protocol} (URL: ${parsed.hostname || "bilinmiyor"})`
+    );
+    return;
+  }
+
+  // Sanitize edilmiş href kullan (URL.href fragment/query korumalıdır)
+  const sanitizedUrl = parsed.href;
+
   if (process.platform === "linux") {
-    const newUrl = new URL(url);
-    require("child_process").exec(`xdg-open "${newUrl}"`);
+    // execFile shell interpolation yapmaz → RCE riski ortadan kalkar
+    const { execFile } = require("child_process");
+    execFile("xdg-open", [sanitizedUrl], (err) => {
+      if (err) {
+        console.error(
+          `[openExternalLinks] xdg-open başarısız (Hedef: ${parsed.hostname}). Hata: ${err.message}`
+        );
+      }
+    });
   } else {
-    shell.openExternal(url).catch(err => {
-      let safeUrl = url;
-      try {
-        const parsed = new URL(url);
-        safeUrl = parsed.hostname || url.substring(0, 30) + '...';
-      } catch(e) {}
-      
-      const customErr = new Error(`[openExternalLinks] Dış bağlantı açılamadı (Hedef: ${safeUrl}). Hata: ${err.message}`);
+    shell.openExternal(sanitizedUrl).catch((err) => {
+      const safeHost = parsed.hostname || url.substring(0, 30) + "...";
+      const customErr = new Error(
+        `[openExternalLinks] Dış bağlantı açılamadı (Hedef: ${safeHost}). Hata: ${err.message}`
+      );
       customErr.code = err.code;
       throw customErr;
     });

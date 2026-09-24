@@ -1,4 +1,4 @@
-const { execSync } = require("child_process");
+const { execFileSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -13,8 +13,8 @@ function fixChromeSandbox() {
     const chromeSandboxPath = path.join(__dirname, "node_modules/electron/dist/chrome-sandbox");
     if (fs.existsSync(chromeSandboxPath)) {
       console.log("🔧 chrome-sandbox izni ayarlanıyor...");
-      execSync(`sudo chown root "${chromeSandboxPath}"`);
-      execSync(`sudo chmod 4755 "${chromeSandboxPath}"`);
+      execFileSync("sudo", ["chown", "root", chromeSandboxPath]);
+      execFileSync("sudo", ["chmod", "4755", chromeSandboxPath]);
       console.log("✅ chrome-sandbox hazır.");
     } else {
       console.warn("⚠️ chrome-sandbox bulunamadı.");
@@ -32,7 +32,8 @@ function ensureShmExists() {
   } catch (err) {
     try {
       console.log("⚠️ /dev/shm yok, oluşturuluyor...");
-      execSync("sudo mkdir -p /dev/shm && sudo chmod 1777 /dev/shm");
+      execFileSync("sudo", ["mkdir", "-p", "/dev/shm"]);
+      execFileSync("sudo", ["chmod", "1777", "/dev/shm"]);
       console.log("✅ /dev/shm başarıyla oluşturuldu.");
     } catch (e) {
       console.error("🚫 /dev/shm oluşturulamadı:", e.message);
@@ -61,9 +62,9 @@ Icon=${iconPath}
 
   try {
     fs.writeFileSync(desktopPath, desktopEntry, { mode: 0o755 });
-    execSync(`chmod +x "${desktopPath}"`);
-    execSync(`xdg-mime default topluyo.desktop x-scheme-handler/topluyo`);
-    execSync(`update-desktop-database ~/.local/share/applications`);
+    execFileSync("chmod", ["+x", desktopPath]);
+    execFileSync("xdg-mime", ["default", "topluyo.desktop", "x-scheme-handler/topluyo"]);
+    execFileSync("update-desktop-database", [path.join(os.homedir(), ".local/share/applications")]);
     console.log("✅ topluyo:// protokolü başarıyla kaydedildi.");
   } catch (err) {
     console.error("🚫 Protokol kaydı başarısız:", err.message);

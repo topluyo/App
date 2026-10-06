@@ -42,15 +42,16 @@ function ensureShmExists() {
 }
 function registerProtocol() {
   const desktopPath = path.join(os.homedir(), ".local/share/applications/topluyo.desktop");
-  const appPath = process.env.APPIMAGE || process.execPath;
+  // Sanitize paths: strip newlines to prevent .desktop entry injection via env vars
+  const appPath = (process.env.APPIMAGE || process.execPath).replace(/[\n\r]/g, '');
 
-  const iconPath = process.env.APPIMAGE
+  const iconPath = (process.env.APPIMAGE
     ? path.join(process.env.APPDIR, ".DirIcon")
-    : path.join(__dirname, "topluyo.png");
+    : path.join(__dirname, "topluyo.png")).replace(/[\n\r]/g, '');
 
   const desktopEntry = `[Desktop Entry]
 Name=Topluyo
-Exec=env ELECTRON_DISABLE_SANDBOX=1 sh -c '"${appPath}" --no-sandbox --disable-dev-shm-usage %u'
+Exec=env ELECTRON_DISABLE_SANDBOX=1 "${appPath}" --no-sandbox --disable-dev-shm-usage %u
 Type=Application
 Terminal=false
 MimeType=x-scheme-handler/topluyo;

@@ -211,6 +211,14 @@
     </div>
 
     <script>
+        /** @param {*} text @returns {string} HTML-escaped string, safe for element content and attribute values */
+        function escapeHtml(text) {
+            if (text == null) return '';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
         // Kütüphane bilgilerini almak için API çağrısı
         async function loadOSSLibraries() {
             try {
@@ -230,22 +238,32 @@
             
             grid.innerHTML = libraries.map((lib, index) => `
                 <div class="oss-card">
-                    <h3>${lib.name}</h3>
-                    <div class="version">v${lib.version}</div>
-                    <p>${lib.description}</p>
-                    <p><strong>Lisans:</strong> <span class="license">${lib.license}</span></p>
-                    ${lib.homepage ? `<p><strong>Website:</strong> <a href="#" class="link" onclick="openExternal('${lib.homepage}'); return false;">${lib.homepage.replace('https://', '').replace('http://', '')}</a></p>` : ''}
-                    ${lib.repository ? `<p><strong>Repository:</strong> <a href="#" class="link" onclick="openExternal('${lib.repository}'); return false;">GitHub</a></p>` : ''}
+                    <h3>${escapeHtml(lib.name)}</h3>
+                    <div class="version">v${escapeHtml(lib.version)}</div>
+                    <p>${escapeHtml(lib.description)}</p>
+                    <p><strong>Lisans:</strong> <span class="license">${escapeHtml(lib.license)}</span></p>
+                    ${lib.homepage ? `<p><strong>Website:</strong> <a href="#" class="link external-link" data-url="${escapeHtml(lib.homepage)}">${escapeHtml(lib.homepage.replace('https://', '').replace('http://', ''))}</a></p>` : ''}
+                    ${lib.repository ? `<p><strong>Repository:</strong> <a href="#" class="link external-link" data-url="${escapeHtml(lib.repository)}">GitHub</a></p>` : ''}
                     ${lib.licenseText ? `
                         <button class="license-toggle" onclick="toggleLicense(${index})">
                             📄 Lisans Metnini Göster
                         </button>
                         <div class="license-text" id="license-${index}">
-                            ${lib.licenseText}
+                            ${escapeHtml(lib.licenseText)}
                         </div>
                     ` : ''}
                 </div>
             `).join('');
+
+            // Event delegation for external links (replaces inline onclick handlers)
+            grid.addEventListener('click', function(e) {
+                const link = e.target.closest('.external-link');
+                if (link) {
+                    e.preventDefault();
+                    const url = link.dataset.url;
+                    if (url) window.electronAPI.openExternal(url);
+                }
+            });
         }
 
         function toggleLicense(index) {
@@ -263,14 +281,10 @@
 
         function showError(message) {
             const loading = document.getElementById('loading');
-            loading.innerHTML = `<div class="error">${message}</div>`;
+            loading.innerHTML = `<div class="error">${escapeHtml(message)}</div>`;
         }
 
-        function openExternal(url) {
-            event.preventDefault();
-            window.electronAPI.openExternal(url);
-            return false;
-        }
+        // External links are now handled via event delegation in displayLibraries()
 
         // Sayfa yüklendiğinde kütüphaneleri al
         document.addEventListener('DOMContentLoaded', loadOSSLibraries);

@@ -42,6 +42,9 @@ contextBridge.exposeInMainWorld("nativeAudioIPC", {
 });
 
 // Setup webFrame injections for callbacks that require global variables
+/** Escapes a JSON.stringify result for safe embedding in a JS template literal (backtick string) */
+const safeJsonForTemplate = (val) => JSON.stringify(val).replace(/`/g, '\\`').replace(/\$/g, '\\$');
+
 ipcRenderer.on("electron-error", (event, errorData) => {
   let osInfo = `${errorData.os} ${errorData.osRelease} (${errorData.arch})`;
   if (errorData.os === 'win32') {
@@ -51,11 +54,12 @@ ipcRenderer.on("electron-error", (event, errorData) => {
 
   const errorText = `**Desktop App Error**\nType: ${errorData.type}\nMessage: ${errorData.message}\nOS: ${osInfo}\nApp Version: ${errorData.appVersion}\nElectron: ${errorData.electronVersion}${extraInfo}\nStack:\n\`\`\`\n${errorData.stack || 'No stack trace'}\n\`\`\``.substring(0, 3000);
 
+  const safeErrorText = safeJsonForTemplate(errorText);
   webFrame.executeJavaScript(`
     if (typeof Route !== 'undefined' && Route.api) {
-      Route.api({ api: "/!api/post/add", data: { channel_id: 33591, code: "", text: ${JSON.stringify(errorText)} } });
+      Route.api({ api: "/!api/post/add", data: { channel_id: 33591, code: "", text: ${safeErrorText} } });
     } else if (window.Route && window.Route.api) {
-      window.Route.api({ api: "/!api/post/add", data: { channel_id: 33591, code: "", text: ${JSON.stringify(errorText)} } });
+      window.Route.api({ api: "/!api/post/add", data: { channel_id: 33591, code: "", text: ${safeErrorText} } });
     }
   `).catch(console.error);
 });
@@ -71,11 +75,12 @@ ipcRenderer.on("ptt-status-change", (event, status) => {
 });
 
 ipcRenderer.on('notification:response', (event, obj) => {
+  const safeObj = safeJsonForTemplate(obj);
   webFrame.executeJavaScript(`
     if (typeof Topluyo !== 'undefined' && typeof Topluyo.NotificationResponse === 'function') {
-      Topluyo.NotificationResponse(${JSON.stringify(obj)});
+      Topluyo.NotificationResponse(${safeObj});
     } else if (window.Topluyo && typeof window.Topluyo.NotificationResponse === 'function') {
-      window.Topluyo.NotificationResponse(${JSON.stringify(obj)});
+      window.Topluyo.NotificationResponse(${safeObj});
     }
   `).catch(console.error);
 });

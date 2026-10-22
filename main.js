@@ -26,7 +26,11 @@ const notificationManager = require("./NotificationManager");
  */
 function sanitizeDeepLinkPath(rawUrl) {
   try {
-    const deepPath = rawUrl.replace(/^topluyo:\/\//, "");
+    const deepPath = rawUrl.replace(/^topluyo:\/\/+/, "");
+    // topluyo://#... bir fragment deep link'idir; JSON payload'ındaki # URL fragment başlatıcısıdır.
+    if (deepPath.startsWith("#")) {
+      return "/" + deepPath;
+    }
     const resolved = new URL("/" + deepPath, "https://topluyo.com");
     if (resolved.origin !== "https://topluyo.com" || resolved.protocol !== "https:") {
       console.error("[DeepLink] Engellenen URL:", rawUrl);

@@ -17,6 +17,7 @@ if (!isWindowsStore) {
 }
 
 function createMainWindow(windowstate, url) {
+  const debugMode = process.argv.includes("debug=true");
   let mainWindow = new BrowserWindow({
     x: windowstate.x,
     y: windowstate.y,
@@ -29,7 +30,7 @@ function createMainWindow(windowstate, url) {
     backgroundColor: "#ffffff",
     icon: path.join(__dirname, "topluyo.png"),
     webPreferences: {
-      devTools: process.env.NODE_ENV === "development",
+      devTools: process.env.NODE_ENV === "development" || debugMode,
       contextIsolation: true,
       nodeIntegration: false,
       nodeIntegrationInSubFrames: true,
@@ -62,6 +63,7 @@ function createMainWindow(windowstate, url) {
   mainWindow.webContents.on("did-fail-load", (e, code, desc) => {
     console.error("Yükleme hatası:", code, desc);
   });
+  if (debugMode) mainWindow.webContents.openDevTools();
 
   session.defaultSession.setDisplayMediaRequestHandler(mediaHandler);
   //mainWindow.webContents.openDevTools();
